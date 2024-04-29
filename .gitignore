@@ -1,0 +1,5 @@
+/literature
+*.a
+*.o
+*.out
+*.d
