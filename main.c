@@ -9,5 +9,5 @@ int main()
 	show_alloc_mem();
 
 	ft_free(tmp);
-	ft_free(tmp);
+	show_alloc_mem();
 }

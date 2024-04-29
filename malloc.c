@@ -67,14 +67,14 @@ static struct hdr_base *next_hdr(const void *addr)
 	return (struct hdr_base *) ((char*) addr + sizeof(struct hdr_base) + hdr->size);
 }
 
-/*static struct hdr_base *prev_hdr(const void *addr)
+static struct hdr_base *prev_hdr(const void *addr)
 {
 	const struct hdr_base *hdr = addr;
 	assert(hdr->pused == 0 && "cannot determine previous header when in use");
 
-	const struct chunk_ftr *ftr = ((const char *) addr - sizeof(struct hdr_base));
-	return (struct hdr_base*) (char*) addr - ftr->size;
-}*/
+	const struct chunk_ftr *ftr = (struct chunk_ftr*) ((char *) addr - sizeof(struct hdr_base));
+	return (struct hdr_base*) ((char*) addr - ftr->size);
+}
 
 static struct hdr_base *get_chunkptr(const void *userptr)
 {
@@ -148,6 +148,30 @@ static void mark_used(void *chunk)
 	next_hdr(hdr)->pused = 1;
 }
 
+//first should be lower addressed
+static struct hdr_base *merge_chunks(void *first, void *second)
+{
+	struct hdr_base *first_hdr = first, *second_hdr = second;
+
+	size_t new_size = first_hdr->size + second_hdr->size + sizeof(struct hdr_base);
+	set_chunk(first_hdr, true, false, new_size);
+
+	return first_hdr;
+}
+
+static struct hdr_base *merge_free_neighbours(void *chunk)
+{
+	struct hdr_base *hdr = chunk;
+
+	if (!hdr->pused)
+		hdr = merge_chunks(prev_hdr(hdr), hdr);
+
+	struct hdr_base *next = next_hdr(hdr);
+
+	if (!next->cused)
+		hdr = merge_chunks(hdr, next);
+}
+
 void *ft_malloc(size_t n)
 {
 	if (!state.mem)
@@ -177,7 +201,8 @@ void ft_free(void *userptr)
 		abort();
 	}
 
-	chunk->cused = 0;
+	chunk = merge_free_neighbours(chunk);
+	next_hdr(chunk)->pused = chunk->cused = 0;
 }
 
 void show_alloc_mem(void)
