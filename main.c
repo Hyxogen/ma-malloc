@@ -4,10 +4,11 @@
 
 int main()
 {
-	void *tmp = ft_malloc(1);
+	void *tmp = ft_malloc(256);
 
 	show_alloc_mem();
 
 	ft_free(tmp);
 	show_alloc_mem();
+	assert(0);
 }
