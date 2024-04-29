@@ -194,6 +194,9 @@ void *ft_malloc(size_t n)
 
 void ft_free(void *userptr)
 {
+	if (!userptr)
+		return;
+
 	struct hdr_base *chunk = get_chunkptr(userptr);
 
 	if (!chunk->cused) {
