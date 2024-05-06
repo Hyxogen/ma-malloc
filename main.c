@@ -3,7 +3,7 @@
 
 int main()
 {
-	size_t size = 256;
+	size_t size = 16384 * 2;
 
 	printf("%p\n", ft_malloc(size));
 	printf("%p\n", ft_malloc(size));

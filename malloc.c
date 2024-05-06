@@ -4,6 +4,7 @@
 
 // TODO REMOVE
 #include <stdlib.h>
+#include <stdio.h>
 
 #include <ft/stdio.h>
 #include <ft/string.h>
@@ -272,6 +273,16 @@ static void *malloc_large(size_t n)
 	return get_userptr(chunk);
 }
 
+static void *malloc_huge(size_t n)
+{
+	struct mem_hdr *chunk =
+	    mmap(NULL, n + sizeof(struct mem_hdr), PROT_READ | PROT_WRITE,
+		 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	chunk->size = n;
+	chunk->pinuse = chunk->cinuse = 1;
+	return get_userptr(chunk);
+}
+
 static void init_malloc_small(void)
 {
 	state.small_start = mmap(NULL, SMALL_SIZE, PROT_READ | PROT_WRITE,
@@ -313,6 +324,9 @@ void *ft_malloc(size_t n)
 
 	if (!res && n <= LARGE_MAX_SIZE)
 		res = malloc_large(n);
+	
+	if (n > LARGE_MAX_SIZE)
+		res = malloc_huge(n);
 
 	return res;
 }
@@ -373,6 +387,14 @@ static void free_large(struct mem_hdr *chunk)
 		append_large(hdr);
 }
 
+static void free_huge(struct mem_hdr *chunk)
+{
+	int rc = munmap(chunk, chunk->size + sizeof(struct mem_hdr));
+
+	if (rc != 0)
+		perror("munmap");
+}
+
 void ft_free(void *userptr)
 {
 	if (!userptr)
@@ -381,8 +403,10 @@ void ft_free(void *userptr)
 	struct mem_hdr *chunk = get_chunkptr(userptr);
 	if (is_small(chunk))
 		free_small(chunk);
-	if (!is_huge(chunk))
+	else if (!is_huge(chunk))
 		free_large(chunk);
+	else
+		free_huge(chunk);
 }
 
 static void show_alloc_mem_start(const void *chunk)
@@ -404,3 +428,58 @@ void show_alloc_mem(void)
 	ft_printf("LARGE : %p\n", (void *)state.large_start);
 	show_alloc_mem_start(state.large_start);
 }
+
+void *ft_calloc(size_t nmemb, size_t size)
+{
+	size_t n = nmemb * size;
+
+	if (nmemb && n / nmemb != size)
+		return NULL;
+
+	void *res = ft_malloc(n);
+	ft_memset(res, 0, size);
+
+	return res;
+}
+
+void *ft_realloc(void *userptr, size_t size)
+{
+	void *res = ft_malloc(size);
+	if (res && userptr) {
+		struct mem_hdr *hdr = get_chunkptr(userptr);
+		ft_memcpy(res, userptr, size > hdr->size ? hdr->size : size);
+		ft_free(userptr);
+	}
+
+	return res;
+}
+
+void *ft_aligned_alloc(size_t align, size_t size)
+{
+	return ft_malloc(ROUND_UP(size, align));
+}
+
+size_t ft_malloc_usable_size(void *userptr)
+{
+	if (!userptr)
+		return 0;
+	return get_chunkptr(userptr)->size;
+}
+
+void *ft_memalign(size_t align, size_t size)
+{
+	return ft_aligned_alloc(align, size);
+}
+
+void *ft_valloc(size_t size)
+{
+	int pagesize = getpagesize();
+	return ft_aligned_alloc(pagesize, size);
+}
+
+void *ft_pvalloc(size_t size)
+{
+	(void) size;
+	ft_assert(0);
+}
+
