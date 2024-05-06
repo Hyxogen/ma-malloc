@@ -3,3 +3,6 @@
 *.o
 *.out
 *.d
+*.so
+/compile_commands.json
+/.cache

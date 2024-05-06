@@ -9,6 +9,11 @@ int main()
 	show_alloc_mem();
 
 	ft_free(tmp);
+
+	tmp = ft_malloc(256);
+	tmp = ft_malloc(256);
 	show_alloc_mem();
-	assert(0);
+
+	show_alloc_mem();
+	return 0;
 }

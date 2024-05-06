@@ -9,6 +9,7 @@
 #include <stdio.h>
 
 #include <ft/stdio.h>
+#include <ft/string.h>
 
 #include <unistd.h>
 #include <sys/mman.h>
@@ -25,6 +26,18 @@
 #define IS_ALGINED_TO(x, boundary) ((x & (boundary - 1)) == 0)
 
 #define ft_assert(pred) ft_assert_impl((pred), #pred, __FILE__, __LINE__)
+
+#ifndef USE_FT_PREFIX
+#define ft_malloc malloc
+#define ft_free free
+#define ft_calloc calloc
+#define ft_realloc realloc
+#define ft_aligned_alloc aligned_alloc
+#define ft_malloc_usable_size malloc_usable_size
+#define ft_memalign memalign
+#define ft_valloc valloc
+#define ft_pvalloc pvalloc
+#endif
 
 struct hdr_base {
 	size_t pused : 1;
@@ -187,6 +200,7 @@ static struct small_chunk_hdr* find_best_small(size_t n)
 	struct small_chunk_hdr *best = NULL;
 
 	do {
+		ft_assert(!cur->base.cused);
 		if (!best)
 			best = cur;
 		else if (cur->base.size == n)
@@ -229,6 +243,10 @@ static struct small_chunk_hdr *split_small_chunk_unlinked(void *chunk, size_t ne
 
 	prev_free->next_free = next;
 	next_free->prev_free = next;
+
+	if (state.small == chunk)
+		state.small = next;
+	return chunk;
 }
 
 static void set_used(void *chunk, bool v)
@@ -318,6 +336,7 @@ static int more_small_chunks(void)
 	set_small_chunk(chunk, true, false, size - 2 * sizeof(struct hdr_base), state.small, NULL);
 	set_hdr(next_hdr(chunk), false, true, 0);
 	append_small_chunk(chunk);
+	return 0;
 }
 
 void *ft_malloc(size_t n)
@@ -431,4 +450,58 @@ void show_alloc_mem(void)
 	show_tiny_mem();
 	//ft_printf("SMALL\n");
 	//show_small_mem();
+}
+
+//TODO PLACEHOLDER FUNCTIONS OPTIMIZE!!!
+void *ft_calloc(size_t nmemb, size_t size)
+{
+	size_t n = nmemb * size;
+	if (nmemb && n / nmemb != size)
+		return NULL;
+
+	void *p = ft_malloc(n);
+	return ft_memset(p, 0, n);
+}
+
+void *ft_realloc(void *userptr, size_t size)
+{
+	struct hdr_base *chunk = get_chunkptr(userptr);
+
+	void *new = ft_malloc(size);
+	if (!new)
+		return NULL;
+	ft_memcpy(new, userptr, size > chunk->size ? chunk->size : size);
+	ft_free(userptr);
+
+	return new;
+}
+
+void *ft_aligned_alloc(size_t align, size_t size)
+{
+	return ft_malloc(ROUND_UP(size, align));
+}
+
+void *ft_memalign(size_t align, size_t size)
+{
+	return ft_aligned_alloc(align, size);
+}
+
+size_t ft_malloc_usable_size(void *userptr)
+{
+	if (!userptr)
+		return 0;
+	struct hdr_base *chunk = get_chunkptr(userptr);
+	return chunk->size;
+}
+
+void *ft_valloc(size_t size)
+{
+	int pagesize = getpagesize();
+	return ft_aligned_alloc(pagesize, size);
+}
+
+void *ft_pvalloc(size_t size)
+{
+	(void) size;
+	abort();
 }
