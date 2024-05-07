@@ -96,7 +96,7 @@ static struct mem_hdr *prevhdr(const void *chunk)
 
 static struct mem_ftr *get_ftr(const void *chunk)
 {
-	return prevftr(nexthdr(chunk));
+	return (struct mem_ftr *) ((char *) nexthdr(chunk) - sizeof(struct mem_ftr));
 }
 
 static void *get_userptr(const void *chunk)
