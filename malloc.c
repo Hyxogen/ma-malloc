@@ -310,6 +310,9 @@ static void init_malloc(void)
 
 void *ft_malloc(size_t n)
 {
+	ft_dprintf(STDERR_FILENO, "//ft_malloc(%zu);\n", n);
+	size_t old_n = n;
+
 	static bool initialized = false;
 	if (!initialized) {
 		init_malloc();
@@ -331,6 +334,7 @@ void *ft_malloc(size_t n)
 	if (n > LARGE_MAX_SIZE)
 		res = malloc_huge(n);
 
+	ft_dprintf(STDERR_FILENO, "void *tmp_%p = ft_malloc(%zu);\n", res, old_n);
 	return res;
 }
 
@@ -406,6 +410,7 @@ static void free_huge(struct mem_hdr *chunk)
 
 void ft_free(void *userptr)
 {
+	ft_dprintf(STDERR_FILENO, "ft_free(tmp_%p);\n", userptr);
 	if (!userptr)
 		return;
 
