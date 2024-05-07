@@ -219,6 +219,7 @@ static void init_chunk(void *chunk, size_t size)
 
 static void append_large(struct large_hdr *chunk)
 {
+	ft_assert(!chunk->base.cinuse && "tried to append allocated chunk to free list");
 	if (!state.large_next_free) {
 		state.large_next_free = chunk;
 		chunk->next_free = chunk;
@@ -248,16 +249,24 @@ static void split_large_unlink_first(struct large_hdr *chunk, size_t n)
 	split_small((struct mem_hdr *)chunk, n);
 
 	struct large_hdr *next = (struct large_hdr *)nexthdr(chunk);
+	ft_assert(!chunk->base.cinuse);
+	ft_assert(!next->base.cinuse);
+	ft_assert(!next->base.pinuse);
 
 	if (state.large_next_free == chunk)
 		state.large_next_free = next;
 
 	if (chunk->prev_free == chunk) {
+		//only link in free list
 		next->next_free = next->prev_free = next;
 	} else {
 		next->prev_free = chunk->prev_free;
 		next->next_free = chunk->next_free;
+		chunk->prev_free->next_free = next;
+		chunk->next_free->prev_free = next;
 	}
+
+	chunk->next_free = chunk->prev_free = NULL; //TODO remove
 }
 
 static void *malloc_large(size_t n)
@@ -310,8 +319,10 @@ static void init_malloc(void)
 
 void *ft_malloc(size_t n)
 {
+#ifdef TRACES
 	ft_dprintf(STDERR_FILENO, "//ft_malloc(%zu);\n", n);
 	size_t old_n = n;
+#endif
 
 	static bool initialized = false;
 	if (!initialized) {
@@ -334,7 +345,9 @@ void *ft_malloc(size_t n)
 	if (n > LARGE_MAX_SIZE)
 		res = malloc_huge(n);
 
+#ifdef TRACES
 	ft_dprintf(STDERR_FILENO, "void *tmp_%p = ft_malloc(%zu);\n", res, old_n);
+#endif
 	return res;
 }
 
@@ -378,21 +391,48 @@ static void free_small(struct mem_hdr *chunk)
 		merge_chunks(chunk, next);
 }
 
+static struct large_hdr* merge_large(struct large_hdr *new, struct large_hdr *old)
+{
+	struct large_hdr *first = new < old ? new : old;
+	struct large_hdr *second = new < old ? old : new;
+	merge_chunks((struct mem_hdr*)first, (struct mem_hdr*)second);
+
+	if (second->next_free == second) {
+		//free list only has one chunk
+		state.large_next_free = first;
+		first->next_free = first;
+		first->prev_free = first;
+		return first;
+	}
+
+	//free list is at least of size 2
+	if (new < old) {
+		old->prev_free->next_free = new;
+		old->next_free->prev_free = new;
+		new->next_free = old->next_free;
+		new->prev_free = old->prev_free;
+
+		if (state.large_next_free == old)
+			state.large_next_free = new;
+	}
+	return first;
+}
+
 static void free_large(struct mem_hdr *chunk)
 {
 	free_common(chunk);
+
 	struct large_hdr *hdr = (struct large_hdr *)chunk;
 
 	bool merged = false;
 	if (!chunk->pinuse) {
-		chunk = merge_chunks(prevhdr(chunk), chunk);
+		hdr = merge_large(hdr, (struct large_hdr*) prevhdr(chunk));
 		merged = true;
 	}
-
+	
 	struct large_hdr *next = (struct large_hdr *)nexthdr(chunk);
 	if (!next->base.cinuse) {
-		next->prev_free->next_free = next->next_free->prev_free = hdr;
-		merge_chunks(chunk, (struct mem_hdr *)next);
+		hdr = merge_large(hdr, next);
 		merged = true;
 	}
 
@@ -410,7 +450,9 @@ static void free_huge(struct mem_hdr *chunk)
 
 void ft_free(void *userptr)
 {
+#ifdef TRACES
 	ft_dprintf(STDERR_FILENO, "ft_free(tmp_%p);\n", userptr);
+#endif
 	if (!userptr)
 		return;
 
@@ -435,12 +477,30 @@ static void show_alloc_mem_start(const void *chunk)
 	}
 }
 
+static void show_large_info(void)
+{
+	struct large_hdr *cur = state.large_start;
+
+	if (!cur)
+		return;
+
+	while (!is_sentinel(cur)) {
+		ft_printf("%p: %i %i %7zu - %p %p\n", cur, cur->base.pinuse,
+			  cur->base.cinuse, cur->base.size, cur->next_free,
+			  cur->prev_free);
+
+		cur = (struct large_hdr*) nexthdr(cur);
+	}
+	ft_printf("\n");
+}
+
 void show_alloc_mem(void)
 {
-	ft_printf("TINY : %p\n", (void *)state.small_start);
+	show_large_info();
+	/*ft_printf("TINY : %p\n", (void *)state.small_start);
 	show_alloc_mem_start(state.small_start);
 	ft_printf("LARGE : %p\n", (void *)state.large_start);
-	show_alloc_mem_start(state.large_start);
+	show_alloc_mem_start(state.large_start);*/
 }
 
 void *ft_calloc(size_t nmemb, size_t size)
