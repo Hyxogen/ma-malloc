@@ -140,7 +140,8 @@ static struct mem_hdr *find_bestfit_small(size_t n)
 static void set_size(void *chunk, size_t n)
 {
 	struct mem_hdr *hdr = (struct mem_hdr *)chunk;
-	hdr->size = get_ftr(chunk)->size = n;
+	hdr->size = n;
+	get_ftr(chunk)->size = n;
 }
 
 static void split_small(struct mem_hdr *chunk, size_t n)
@@ -149,8 +150,10 @@ static void split_small(struct mem_hdr *chunk, size_t n)
 	set_size(chunk, n);
 
 	struct mem_hdr *next = nexthdr(chunk);
+	next->pinuse = next->cinuse = 0; // has to happen before set_size, as
+					 // there is an assert in it that check
+					 // if it's allocated or not
 	set_size(next, oldsize - n - sizeof(struct mem_hdr));
-	next->pinuse = next->cinuse = 0;
 }
 
 static void set_inuse(void *chunk, bool used)
