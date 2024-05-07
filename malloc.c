@@ -357,9 +357,15 @@ static struct mem_hdr *merge_chunks(struct mem_hdr *first,
 	return first;
 }
 
-static void free_small(struct mem_hdr *chunk)
+static void free_common(struct mem_hdr *chunk)
 {
 	set_inuse(chunk, false);
+	get_ftr(chunk)->size = chunk->size;
+}
+
+static void free_small(struct mem_hdr *chunk)
+{
+	free_common(chunk);
 	if (!chunk->pinuse)
 		chunk = merge_chunks(prevhdr(chunk), chunk);
 
@@ -370,8 +376,8 @@ static void free_small(struct mem_hdr *chunk)
 
 static void free_large(struct mem_hdr *chunk)
 {
+	free_common(chunk);
 	struct large_hdr *hdr = (struct large_hdr *)chunk;
-	set_inuse(chunk, false);
 
 	bool merged = false;
 	if (!chunk->pinuse) {
