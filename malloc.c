@@ -90,7 +90,7 @@ static struct mem_ftr *prevftr(const void *chunk)
 static struct mem_hdr *prevhdr(const void *chunk)
 {
 	const struct mem_ftr *ftr = prevftr(chunk);
-	return (struct mem_hdr *)((char *)chunk - ftr->size +
+	return (struct mem_hdr *)((char *)chunk - ftr->size -
 				  sizeof(struct mem_hdr));
 }
 
