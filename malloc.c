@@ -12,8 +12,13 @@
 #include <sys/mman.h>
 #include <sys/param.h>
 #include <unistd.h>
+#include <pthread.h>
 
-#define MALLOC_ALIGN 8
+#if __has_feature(address_sanitizer)
+#include <sanitizer/asan_interface.h>
+#endif
+
+#define MALLOC_ALIGN 16
 #define MIN_SMALLCHUNK_SIZE 16
 #define MIN_LARGECHUNK_SIZE 32
 
@@ -64,6 +69,7 @@ static struct {
 	struct mem_hdr *small_start;
 	struct large_hdr *large_start;
 	struct large_hdr *large_next_free;
+	pthread_mutex_t mtx;
 } state;
 
 static bool is_sentinel(const void *chunk);
@@ -73,6 +79,11 @@ static void *get_userptr_raw(const void *chunk);
 static void dump_small(void)
 {
 	const struct mem_hdr *cur = state.small_start;
+
+	if (!cur) {
+		ft_dprintf(STDERR_FILENO, "\033[34mNO SMALL MEMORY!!\033[m\n");
+		return;
+	}
 
 	while (!is_sentinel(cur)) {
 		size_t size = cur->size;
@@ -110,6 +121,10 @@ static void dump_large_one(const struct large_hdr *hdr)
 static void dump_large(void)
 {
 	const struct large_hdr *cur = state.large_start;
+	if (!cur) {
+		ft_dprintf(STDERR_FILENO, "\033[34mNO LARGE MEMORY!!\033[m\n");
+		return;
+	}
 
 	while (!is_sentinel(cur)) {
 		dump_large_one(cur);
@@ -126,7 +141,7 @@ static void dump(void)
 	dump_large();
 }
 
-void ft_assert_impl(int pred, const char *predstr, const char *func,
+static void ft_assert_impl(int pred, const char *predstr, const char *func,
 		    const char *file, int line)
 {
 	if (!pred) {
@@ -186,6 +201,27 @@ static bool is_sentinel(const void *chunk)
 	return hdr->size == 0;
 }
 
+static void assert_small_correct(void)
+{
+	struct mem_hdr *cur = state.small_start;
+
+	if (!cur)
+		return;
+
+	struct mem_hdr *prev = NULL;
+
+	while ((char*)cur < (char*)state.small_start + SMALL_SIZE) {
+		if ((char*)cur < (char*)state.small_start + SMALL_SIZE - sizeof(struct mem_hdr))
+			ft_assert(!is_sentinel(cur));
+
+		if (prev)
+			ft_assert(cur->pinuse == prev->cinuse);
+
+		prev = cur;
+		cur = nexthdr(cur);
+	}
+}
+
 static void assert_large_correct(void)
 {
 	if (!state.large_start)
@@ -226,6 +262,12 @@ static void assert_large_correct(void)
 
 		cur = cur->next_free;
 	} while (cur != state.large_next_free);
+}
+
+static void assert_correct(void)
+{
+	assert_small_correct();
+	assert_large_correct();
 }
 
 static struct mem_hdr *find_bestfit_small(size_t n)
@@ -347,7 +389,7 @@ static void append_large(struct large_hdr *chunk)
 
 static void more_large(void)
 {
-	struct large_hdr *chunk = mmap((void*)0x7ffff7a00000, LARGE_SIZE, PROT_READ | PROT_WRITE,
+	struct large_hdr *chunk = mmap(NULL, LARGE_SIZE, PROT_READ | PROT_WRITE,
 				       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
 	ft_assert(chunk != MAP_FAILED);
@@ -424,7 +466,7 @@ static void *malloc_large(size_t n)
 		unlink_large(chunk);
 	set_inuse(chunk, true);
 
-	assert_large_correct();
+	assert_correct();
 	return get_userptr(chunk);
 }
 
@@ -440,7 +482,7 @@ static void *malloc_huge(size_t n)
 
 static void init_malloc_small(void)
 {
-	state.small_start = mmap((void*)0x7ffff7fbf000, SMALL_SIZE, PROT_READ | PROT_WRITE,
+	state.small_start = mmap(NULL, SMALL_SIZE, PROT_READ | PROT_WRITE,
 				 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
 	ft_assert(state.small_start != MAP_FAILED);
@@ -456,6 +498,7 @@ static void init_malloc_large(void)
 
 static void init_malloc(void)
 {
+	pthread_mutex_init(&state.mtx, NULL);
 	init_malloc_small();
 	init_malloc_large();
 }
@@ -464,10 +507,9 @@ void *ft_malloc(size_t n)
 {
 #ifdef TRACES
 	ft_dprintf(STDERR_FILENO, "//ft_malloc(%zu);\n", n);
-	size_t old_n = n;
 #endif
+	size_t old_n = n;
 
-	assert_large_correct();
 
 	static bool initialized = false;
 	if (!initialized) {
@@ -477,6 +519,11 @@ void *ft_malloc(size_t n)
 
 	if (n == 0)
 		return NULL;
+
+	int rc = pthread_mutex_lock(&state.mtx);
+	if (rc)
+		return NULL;
+	assert_correct();
 
 	n = ROUND_UP(n, MALLOC_ALIGN);
 
@@ -494,7 +541,15 @@ void *ft_malloc(size_t n)
 #ifdef TRACES
 	ft_dprintf(STDERR_FILENO, "void *tmp_%p = ft_malloc(%zu);\n", res, old_n);
 #endif
-	assert_large_correct();
+	assert_correct();
+
+#if __has_feature(address_sanitizer)
+	__asan_poison_memory_region(res, n);
+#endif
+
+	rc = pthread_mutex_unlock(&state.mtx);
+	ft_assert(rc == 0);
+
 	return res;
 }
 
@@ -523,6 +578,7 @@ static struct mem_hdr *merge_chunks(struct mem_hdr *first,
 
 static void free_common(struct mem_hdr *chunk)
 {
+	ft_assert(chunk->cinuse && "double free" && chunk);
 	set_inuse(chunk, false);
 	get_ftr(chunk)->size = chunk->size;
 }
@@ -585,18 +641,17 @@ static void free_large(struct mem_hdr *chunk)
 
 	if (!chunk->pinuse) {
 		hdr = merge_large(hdr, (struct large_hdr*) prevhdr(chunk));
-		assert_large_correct();
+		assert_correct();
 	}
 	
 	struct large_hdr *next = (struct large_hdr *)nexthdr(chunk);
 	if (!next->base.cinuse) {
 		hdr = merge_large(hdr, next);
-		assert_large_correct();
+		assert_correct();
 	}
 
 	if (!hdr->next_free)
 		append_large(hdr);
-	//assert_large_correct();
 }
 
 static void free_huge(struct mem_hdr *chunk)
@@ -612,19 +667,29 @@ void ft_free(void *userptr)
 #ifdef TRACES
 	ft_dprintf(STDERR_FILENO, "ft_free(tmp_%p);\n", userptr);
 #endif
-	assert_large_correct();
 
 	if (!userptr)
 		return;
 
+	int rc = pthread_mutex_lock(&state.mtx);
+	ft_assert(rc == 0);
+
+	assert_correct();
+
 	struct mem_hdr *chunk = get_chunkptr(userptr);
+#if __has_feature(address_sanitizer)
+	__asan_unpoison_memory_region(userptr, chunk->size);
+#endif
 	if (is_small(chunk))
 		free_small(chunk);
 	else if (!is_huge(chunk))
 		free_large(chunk);
 	else
 		free_huge(chunk);
-	assert_large_correct();
+	assert_correct();
+
+	rc = pthread_mutex_unlock(&state.mtx);
+	ft_assert(rc == 0);
 }
 
 static void show_alloc_mem_start(const void *chunk)
@@ -672,17 +737,22 @@ void *ft_calloc(size_t nmemb, size_t size)
 		return NULL;
 
 	void *res = ft_malloc(n);
-	ft_memset(res, 0, size);
+	ft_memset(res, 0, n);
 
 	return res;
 }
 
 void *ft_realloc(void *userptr, size_t size)
 {
+#ifdef TRACES
+	ft_dprintf(STDERR_FILENO, "//ft_realloc(%p, %zu);\n", userptr, size);
+#endif
 	void *res = ft_malloc(size);
-	if (res && userptr) {
-		struct mem_hdr *hdr = get_chunkptr(userptr);
-		ft_memcpy(res, userptr, size > hdr->size ? hdr->size : size);
+	if (res) {
+		if (userptr) {
+			struct mem_hdr *hdr = get_chunkptr(userptr);
+			ft_memcpy(res, userptr, size > hdr->size ? hdr->size : size);
+		}
 		ft_free(userptr);
 	}
 
@@ -703,13 +773,17 @@ size_t ft_malloc_usable_size(void *userptr)
 
 void *ft_memalign(size_t align, size_t size)
 {
-	return ft_aligned_alloc(align, size);
+	(void)align;
+	(void)size;
+	ft_assert(0);
+	return NULL;
 }
 
 void *ft_valloc(size_t size)
 {
-	int pagesize = getpagesize();
-	return ft_aligned_alloc(pagesize, size);
+	(void)size;
+	ft_assert(0);
+	return NULL;
 }
 
 void *ft_pvalloc(size_t size)
