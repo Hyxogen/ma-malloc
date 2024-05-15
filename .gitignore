@@ -6,3 +6,9 @@
 *.so
 /compile_commands.json
 /.cache
+/main.c
+/tmp
+/test
+*.plist
+*.txt
+/hello.c
