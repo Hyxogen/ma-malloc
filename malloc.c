@@ -1,75 +1,82 @@
 #include <stddef.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <stdlib.h>
 #include <stdint.h>
-
-#include <ft/stdio.h>
-#include <ft/string.h>
-
+#include <unistd.h>
+#include <stdbool.h>
 #include <sys/mman.h>
 
+#include <ft/stdio.h>
+
 #define MALLOC_ALIGN (_Alignof(max_align_t))
+#define HALF_MALLOC_ALIGN (MALLOC_ALIGN >> 1)
+#define MIN_CHUNK_SIZE (4 * sizeof(size_t))
+#define HEADER_SIZE_INUSE (sizeof(size_t))
+#define FOOTER_SIZE (sizeof(size_t))
+#define MIN_ALLOC_SIZE (MIN_CHUNK_SIZE - HEADER_SIZE_INUSE)
+#define SMALLBIN_COUNT 64
+
+#define MAX_SMALL_SIZE 1016
+
 #define ROUND_UP(x, boundary) ((x + boundary - 1) & ~(boundary - 1))
 #define IS_ALGINED_TO(x, boundary) (((uintmax_t) x & (boundary - 1)) == 0)
-#define IS_MULTIPLE_OF(x, y) (((x / y) * y) == x)
-
-#define MIN_CHUNK_SIZE 32
-#define MIN_ALLOC_SIZE (MIN_CHUNK_SIZE - sizeof(struct memhdr))
-#define SMALL_COUNT 128
-#define MAX_SMALL_SIZE 1016
-#define MAX_LARGE_SIZE 1048576
-
-#define SMALLBIN_COUNT 64
 
 #ifdef NDEBUG
 #define ft_assert(pred)
 #else
+#include <stdlib.h>
 #define ft_assert(pred)                                                        \
 	ft_assert_impl(!(!(pred)), #pred, __FUNCTION__, __FILE__, __LINE__)
 #endif
 
 #define eprint(...) ft_dprintf(STDERR_FILENO, __VA_ARGS__)
 
-
-//4096
-
 struct memhdr {
 	size_t pinuse : 1;
 	size_t cinuse : 1;
 	size_t mapped : 1;
-	size_t size : 61;
+	size_t size : (sizeof(size_t) * 8) - 3;
+
+	//only accesible if !cinuse
+	struct memhdr *next;
+	struct memhdr *prev;
 };
 
 struct memftr {
 	size_t size;
 };
 
-struct freehdr {
-	struct memhdr base;
-	struct freehdr *next;
-	struct freehdr *prev;
-};
-
 static struct {
 	size_t pagesize;
-	struct memhdr *small; //TODO remove
-	struct freehdr *small_top;
 
-	struct freehdr *small_bins[SMALLBIN_COUNT];
+	struct memhdr *small;
+	struct memhdr *small_top;
+	struct memhdr *small_bins[SMALLBIN_COUNT];
 } mstate;
 
-static void dump();
+static void dump(void);
 
 static void ft_assert_impl(int pred, const char *predstr, const char *func,
 		    const char *file, int line)
 {
 	if (!pred) {
-		ft_dprintf(STDERR_FILENO, "%s:%i: %s: Assertion '%s' failed.\n",
+		eprint("%s:%i: %s: Assertion '%s' failed.\n",
 			   file, line, func, predstr);
 		dump();
 		abort();
 	}
+}
+
+static struct memhdr *nexthdr(const void *chunk)
+{
+	struct memhdr *hdr = (struct memhdr *)chunk;
+	return (struct memhdr*) ((char*) chunk + hdr->size + HEADER_SIZE_INUSE);
+
+}
+
+static struct memftr *getftr(const void *chunk)
+{
+	struct memhdr *hdr = (struct memhdr*)chunk;
+	ft_assert(!hdr->cinuse && "no footer present on allocated chunk");
+	return (struct memftr*) ((char*) chunk + hdr->size + HEADER_SIZE_INUSE - FOOTER_SIZE);
 }
 
 static struct memftr *prevftr(const void *chunk)
@@ -77,32 +84,19 @@ static struct memftr *prevftr(const void *chunk)
 	struct memhdr *hdr = (struct memhdr *)chunk;
 	ft_assert(!hdr->pinuse);
 
-	return (struct memftr*) ((char*) chunk - sizeof(struct memhdr));
+	return (struct memftr*) ((char*) chunk - HEADER_SIZE_INUSE);
 }
 
 static struct memhdr *prevhdr(const void *chunk)
 {
-	return (struct memhdr*) ((char *)chunk - prevftr(chunk)->size - sizeof(struct memhdr));
-}
-
-static struct memhdr *nexthdr(const void *chunk)
-{
-	struct memhdr *hdr = (struct memhdr *)chunk;
-	return (struct memhdr*) ((char*) chunk + hdr->size + sizeof(struct memhdr));
-}
-
-static struct memftr *getftr(const void *chunk)
-{
-	struct memhdr *hdr = (struct memhdr*)chunk;
-	ft_assert(!hdr->cinuse);
-	return (struct memftr*) ((char*) chunk + hdr->size + sizeof(struct memhdr) - sizeof(struct memftr));
+	return (struct memhdr*) ((char *)chunk - prevftr(chunk)->size - HEADER_SIZE_INUSE);
 }
 
 static void setsize(void *chunk, size_t n)
 {
 	struct memhdr *hdr = (struct memhdr *)chunk;
 
-	ft_assert(n + sizeof(struct memhdr) >= MIN_CHUNK_SIZE);
+	ft_assert(n >= MIN_ALLOC_SIZE);
 	ft_assert(!hdr->cinuse);
 
 	hdr->size = n;
@@ -118,12 +112,12 @@ static void setinuse(void *chunk, bool val)
 
 static void* chunk2mem(const void *chunk)
 {
-	return (char*) chunk + sizeof(struct memhdr);
+	return (char*) chunk + HEADER_SIZE_INUSE;
 }
 
 static struct memhdr* mem2chunk(const void *p)
 {
-	return (struct memhdr*) ((char *) p - sizeof(struct memhdr));
+	return (struct memhdr*) ((char *) p - HEADER_SIZE_INUSE);
 }
 
 static size_t small_binidx(size_t size)
@@ -133,57 +127,6 @@ static size_t small_binidx(size_t size)
 	ft_assert(IS_ALGINED_TO(size, 16));
 	size_t idx = size / 16;
 	return idx - 1;
-}
-
-static void assert_correct_freelist(const struct freehdr *hdr, size_t size)
-{
-	const struct freehdr *cur = hdr;
-	if (!cur)
-		return;
-	do {
-		ft_assert(!cur->base.cinuse);
-		ft_assert(cur->base.pinuse);
-		ft_assert(nexthdr(cur)->cinuse);
-		ft_assert(cur->base.size == getftr(cur)->size);
-		if (size != 0)
-			ft_assert(cur->base.size == size);
-
-		ft_assert(cur->next);
-		ft_assert(cur->prev);
-
-		ft_assert(cur->prev->next == cur);
-		ft_assert(cur->next->prev == cur);
-
-		cur = cur->next;
-	} while (cur != hdr);
-}
-
-static void assert_correct_small(void)
-{
-	const struct memhdr *cur = mstate.small;
-	if (!cur)
-		return;
-
-	const struct memhdr *prev = NULL;
-	do {
-		ft_assert(!(!cur->cinuse && !cur->pinuse));
-		if (prev)
-			ft_assert(prev->cinuse == cur->pinuse);
-		prev = cur;
-		cur = nexthdr(cur);
-	} while (cur->size != 0);
-}
-
-static void assert_correct(void)
-{
-	assert_correct_small();
-	assert_correct_freelist(mstate.small_top, 0);
-
-	size_t size = 24;
-	for (size_t i = 0; i < sizeof(mstate.small_bins)/sizeof(mstate.small_bins[0]); ++i) {
-		assert_correct_freelist(mstate.small_bins[i], size);
-		size += 16;
-	}
 }
 
 static void dump_small()
@@ -205,8 +148,7 @@ static void dump_small()
 		eprint(" size=%#.6zx mapped=%i pinuse=%i", cur->size, cur->mapped, cur->pinuse);
 
 		if (!cur->cinuse) {
-			const struct freehdr* hdr = (const struct freehdr*) cur;
-			eprint(" next=%p prev=%p", hdr->next, hdr->prev); 
+			eprint(" next=%p prev=%p", cur->next, cur->prev); 
 
 			if (cur->size <= MAX_SMALL_SIZE)
 				eprint(" bin=%zu", small_binidx(cur->size));
@@ -228,119 +170,160 @@ static void dump()
 	dump_small();
 }
 
-static void unlink_chunk(struct freehdr **start, struct freehdr *hdr)
+static void assert_correct_freelist(const struct memhdr *list, size_t size)
 {
-	if (hdr->next == hdr) {
-		*start = NULL;
-		hdr->next = hdr->prev = NULL;
+	const struct memhdr *cur = list;
+	if (!cur)
 		return;
+
+	do {
+		ft_assert(!cur->cinuse);
+		ft_assert(cur->pinuse);
+		ft_assert(nexthdr(cur)->cinuse);
+
+		ft_assert(cur->size == getftr(cur)->size);
+		if (size)
+			ft_assert(cur->size == size);
+
+		ft_assert(cur->next);
+		ft_assert(cur->prev);
+
+		ft_assert(cur->next->prev == cur);
+		ft_assert(cur->prev->next == cur);
+
+		cur = cur->next;
+	} while (cur != list);
+}
+
+static void assert_correct_small(void)
+{
+	const struct memhdr *cur = mstate.small;
+	if (!cur)
+		return;
+
+	const struct memhdr *prev = NULL;
+
+	while (1) {
+
+		ft_assert(!(!cur->cinuse && !cur->pinuse));
+
+		if (prev)
+			ft_assert(prev->cinuse == cur->pinuse);
+
+		if (cur->size == 0)
+			break;
+		prev = cur;
+		cur = nexthdr(cur);
 	}
+}
 
-	struct freehdr *next = hdr->next;
-	struct freehdr *prev = hdr->prev;
+static void assert_correct(void)
+{
+	assert_correct_small();
+	assert_correct_freelist(mstate.small_top, 0);
 
-	if (next == prev) {
-		next->next = next->prev = next;
+	size_t size = 24;
+	for (int i = 0; i < SMALLBIN_COUNT; ++i) {
+		assert_correct_freelist(mstate.small_bins[i], size);
+		size += 16;
+	}
+}
+
+static void unlink_chunk(struct memhdr **list, struct memhdr *hdr)
+{
+	if (hdr->next != hdr) {
+		struct memhdr *next = hdr->next;
+		struct memhdr *prev = hdr->prev;
+
+		if (next == prev) {
+			next->next = next->prev = next;
+		} else {
+			next->prev = prev;
+			prev->next = next;
+		}
+
+		if (hdr == *list)
+			*list = next;
 	} else {
-		next->prev = prev;
-		prev->next = next;
+		//only element in list
+		*list = NULL;
 	}
-	
-	if (hdr == *start)
-		*start = next;
-
+	//TODO remove, not needed
 	hdr->next = hdr->prev = NULL;
 }
 
-static void append_chunk(struct freehdr **list, struct freehdr *chunk)
+static void append_chunk(struct memhdr **list, struct memhdr *chunk)
 {
-	ft_assert(!chunk->base.cinuse);
+	ft_assert(!chunk->cinuse);
 	if (!*list) {
 		*list = chunk;
 		chunk->next = chunk->prev = chunk;
 		return;
 	}
-
 	chunk->prev = (*list)->prev;
 	chunk->next = *list;
-
 
 	(*list)->prev->next = chunk;
 	(*list)->prev = chunk;
 }
 
-static void append_small_chunk(struct freehdr *chunk)
+static bool should_split(const struct memhdr *chunk, size_t allocsize)
 {
-	struct freehdr **list = &mstate.small_top;
-	if (chunk->base.size <= MAX_SMALL_SIZE) {
-		size_t bin = small_binidx(chunk->base.size);
-		list = &mstate.small_bins[bin];
-	}
-
-	append_chunk(list, chunk);
+	ft_assert(chunk->size >= allocsize);
+	return chunk->size - allocsize >= MIN_CHUNK_SIZE;
 }
 
-static void* split_chunk(struct freehdr *chunk, size_t n)
+static struct memhdr *split_chunk(struct memhdr *chunk, size_t n)
 {
-	size_t rem = chunk->base.size - n;
+	size_t rem = chunk->size - n;
 
 	ft_assert(rem >= MIN_CHUNK_SIZE);
 
 	setsize(chunk, n);
 
-	struct freehdr *next = (struct freehdr*) nexthdr(chunk);
-	setsize(next, rem - sizeof(struct memhdr));
+	struct memhdr *next = nexthdr(chunk);
+	setsize(next, rem - HEADER_SIZE_INUSE);
 	setinuse(next, false);
-
+	
+	//TODO debug code, remove
 	chunk->next = chunk->prev = next->next = next->prev = NULL;
 	return next;
 }
 
-static struct freehdr *find_bestfit(struct freehdr *list, size_t n)
-{
-	struct freehdr *cur = list;
-	struct freehdr *best = NULL;
-
-	if (!list)
-		return NULL;
-
-	do {
-		if (cur->base.size == n) {
-			return cur;
-		} else if (cur->base.size > n) {
-			if (!best || cur->base.size < best->base.size)
-				best = cur;
-		}
-		cur = cur->next;
-	} while (cur != list);
-	return best;
-}
-
-static struct freehdr **find_bin(size_t n)
+static struct memhdr **find_bin(size_t n)
 {
 	size_t bin = small_binidx(n);
 
-	struct freehdr **list = &mstate.small_bins[bin];
 	while (bin < SMALLBIN_COUNT) {
-		if (*list) {
+		struct memhdr **list = &mstate.small_bins[bin];
+		if (*list)
 			return list;
-		} else {
-			bin += 1;
-			list = &mstate.small_bins[bin];
-		}
+		bin += 1;
 	}
 	return NULL;
 }
 
-static struct freehdr *malloc_small_from_bins(size_t n)
+static void append_small_chunk(struct memhdr *chunk)
 {
-	struct freehdr **list = find_bin(n);
-	if (list) {
-		struct freehdr *chunk = *list;
+	ft_assert(!chunk->cinuse);
 
-		unlink_chunk(list, chunk);
-		if (chunk->base.size != n && chunk->base.size - n - sizeof(struct memhdr) >= MIN_CHUNK_SIZE) {
-			struct freehdr *rem = split_chunk(chunk, n);
+	struct memhdr **list = &mstate.small_top;
+	if (chunk->size <= MAX_SMALL_SIZE) {
+		size_t bin = small_binidx(chunk->size);
+		list = &mstate.small_bins[bin];
+	}
+	append_chunk(list, chunk);
+}
+
+static struct memhdr *try_alloc_small_from_bins(size_t n)
+{
+	struct memhdr **bin = find_bin(n);
+	if (bin) {
+		struct memhdr *chunk = *bin;
+
+		unlink_chunk(bin, chunk);
+		if (should_split(chunk, n)) {
+			struct memhdr *rem = split_chunk(chunk, n);
 			append_small_chunk(rem);
 		}
 		return chunk;
@@ -348,157 +331,193 @@ static struct freehdr *malloc_small_from_bins(size_t n)
 	return NULL;
 }
 
-static struct freehdr *alloc_chunk(size_t minsize)
+static struct memhdr *find_bestfit(struct memhdr *list, size_t n)
 {
-	size_t padding = 4 * sizeof(struct memhdr) + (MALLOC_ALIGN - 2 * sizeof(struct memhdr));
+	struct memhdr *cur = list;
+	struct memhdr *best = NULL;
+
+	if (!cur)
+		return NULL;
+
+	do {
+		ft_assert(!cur->cinuse);
+		if (cur->size == n) {
+			return cur;
+		} else if (cur->size > n) {
+			if (!best || cur->size < best->size)
+				best = cur;
+		}
+
+		ft_assert(cur->next);
+		cur = cur->next;
+	} while (cur != list);
+	return best;
+}
+
+static struct memhdr *alloc_chunk(size_t minsize)
+{
+	const size_t padding = 4 * HEADER_SIZE_INUSE;
 
 	size_t size = ROUND_UP(minsize + padding, mstate.pagesize);
 
-	struct freehdr *chunk =
-	    mmap(NULL, size,
-		 PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	struct memhdr *chunk = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
 	if (chunk != MAP_FAILED) {
-		chunk->base.size = 0;
-		chunk->base.pinuse = true;
+		//pad start so that all allocations are aligned
+		chunk->size = 0;
+		chunk->pinuse = true;
 		setinuse(chunk, true);
 
-		chunk = (struct freehdr*) nexthdr(chunk);
-
-		chunk->next = chunk->prev = NULL;
-		chunk->base.pinuse = true;
-		chunk->base.cinuse = false;
+		chunk = nexthdr(chunk);
+		chunk->next = chunk->prev = NULL; //TODO debug code, remove
+		chunk->pinuse = true;
+		chunk->cinuse = false;
 
 		size_t chunksize = (size - padding) | 8;
-		//ft_assert(IS_ALGINED_TO(chunksize, MALLOC_ALIGN));
 		setsize(chunk, chunksize);
 
-		nexthdr(chunk)->size = 0;
-		nexthdr(chunk)->cinuse = true;
-		nexthdr(chunk)->pinuse = false;
+		struct memhdr *sentinel = nexthdr(chunk);
+		sentinel->size = 0;
+		sentinel->pinuse = false;
+		sentinel->cinuse = true;
+		return chunk;
+	} else {
+		return NULL;
 	}
-	return chunk;
 }
 
-static struct freehdr *malloc_small_new(size_t n)
+static struct memhdr *try_alloc_small_new_chunk(size_t n)
 {
-	struct freehdr *chunk = find_bestfit(mstate.small_top, n);
+	struct memhdr *chunk = find_bestfit(mstate.small_top, n);
 
-	if (!chunk || chunk->base.size - n < MIN_CHUNK_SIZE) {
-		chunk = alloc_chunk(MAX_SMALL_SIZE * SMALL_COUNT);
+	if (!chunk || (!should_split(chunk, n) && chunk->size > MAX_SMALL_SIZE)) {
+		chunk = alloc_chunk(n);
 		if (!chunk)
-			return NULL; //TODO enomem
+			return NULL;
 		append_chunk(&mstate.small_top, chunk);
-
+		
 		if (!mstate.small)
-			mstate.small = &chunk->base;
+			mstate.small = chunk;
 	}
 
-	//TODO make sure that remaining chunk is also aligned
 	unlink_chunk(&mstate.small_top, chunk);
-	if (chunk->base.size - n >= MIN_CHUNK_SIZE) {
-		struct freehdr *rem = split_chunk(chunk, n);
+	if (should_split(chunk, n)) {
+		struct memhdr *rem = split_chunk(chunk, n);
 		append_small_chunk(rem);
 	}
 	return chunk;
 }
 
-static struct freehdr *malloc_small(size_t n)
+static void *malloc_small(size_t n)
 {
-	if (n < MIN_ALLOC_SIZE) {
+	//memhdr addresses are guaranteed to start with 0x8 (or 0x4) so that the
+	//userptr is properly aligned
+	//
+	//the size of the entire chunk must therefore always be a multiple of 16
+	
+	//n could be already properly aligned, then we must add 0x8
+	//n could be not aligned
+	if (n < MIN_ALLOC_SIZE)
 		n = MIN_ALLOC_SIZE;
-	} else {
-		n = ROUND_UP(n, sizeof(struct memhdr));
-		if (IS_ALGINED_TO(n, MALLOC_ALIGN))
-			n += sizeof(struct memhdr);
-	}
+	n = ROUND_UP(n, HALF_MALLOC_ALIGN) | HALF_MALLOC_ALIGN;
+	ft_assert(n & HALF_MALLOC_ALIGN);
 
-	struct freehdr *chunk = malloc_small_from_bins(n);
-
-	if(!chunk)
-		chunk = malloc_small_new(n);
-
+	struct memhdr *chunk = try_alloc_small_from_bins(n);
+	if (!chunk)
+		chunk = try_alloc_small_new_chunk(n);
 	return chunk;
 }
 
+
 static void init_malloc(void)
 {
-	mstate.small = NULL;
-	mstate.small_top = NULL;
 	mstate.pagesize = getpagesize();
 
-	for (size_t bin = 0; bin < sizeof(mstate.small_bins)/sizeof(mstate.small_bins[0]); ++bin)
-		mstate.small_bins[bin] = NULL;
+	mstate.small = NULL;
+	mstate.small_top = NULL;
+
+	for (int i = 0; i < SMALLBIN_COUNT; ++i) {
+		mstate.small_bins[i] = NULL;
+	}
 }
 
-void* ft_malloc(size_t n)
+void *ft_malloc(size_t n)
 {
-	static bool inited = false;
-	if (!inited) {
-		inited = true;
+	static bool initialized = false;
 
+	if (!initialized) {
 		init_malloc();
+		initialized = true;
 	}
 
-	if (!n) 
+	if (!n)
 		return NULL;
 
-	struct freehdr *chunk = NULL;
 	//TODO lock
 	assert_correct();
+
+	struct memhdr *chunk = NULL;
 	if (n <= MAX_SMALL_SIZE)
 		chunk = malloc_small(n);
 	else
 		ft_assert(0);
 
-	setinuse(chunk, true);
+	if (chunk)
+		setinuse(chunk, true);
+
 
 	assert_correct();
 	//TODO unlock
+	
+	if (chunk) {
+		void *p = chunk2mem(chunk);
+		ft_assert(IS_ALGINED_TO(p, MALLOC_ALIGN));
+		return p;
+	}
+	return NULL;
+}
 
-	void *p = chunk2mem(chunk);
-	ft_assert(IS_ALGINED_TO(p, MALLOC_ALIGN));
-	return p;
+
+static void unlink_small_chunk(struct memhdr *chunk)
+{
+	struct memhdr **list = &mstate.small_top;
+
+	if (chunk->size <= MAX_SMALL_SIZE) {
+		size_t bin = small_binidx(chunk->size);
+		list = &mstate.small_bins[bin];
+	}
+
+	unlink_chunk(list, chunk);
 }
 
 static struct memhdr* merge_chunks(struct memhdr *a, struct memhdr *b)
 {
-	ft_assert(a < b);
+	ft_assert(a != b);
+	struct memhdr *first = a < b ? a : b;
 
-	size_t new_size = a->size + b->size + sizeof(struct memhdr);
+	size_t new_size = a->size + b->size + HEADER_SIZE_INUSE;
 
-	setsize(a, new_size);
-	return a;
+	setsize(first, new_size);
+	return first;
 }
 
 static void free_small(struct memhdr *chunk)
 {
-	struct freehdr *hdr = (struct freehdr*) chunk;
-	hdr->next = hdr->prev = NULL;
+	chunk->next = chunk->prev = NULL; //TODO debug code, remove
 
 	if (!chunk->pinuse) {
 		struct memhdr *prev = prevhdr(chunk);
-		if (prev->size <= MAX_SMALL_SIZE) {
-			size_t bin = small_binidx(prev->size);
-			unlink_chunk(&mstate.small_bins[bin], (struct freehdr*) prev);
-		} else {
-			unlink_chunk(&mstate.small_top, (struct freehdr*) prev);
-		}
-		chunk = merge_chunks(prev, chunk);
+		unlink_small_chunk(prev);
+		chunk = merge_chunks(chunk, prev);
 	}
 
 	struct memhdr *next = nexthdr(chunk);
 	if (!next->cinuse) {
-		if (next->size <= MAX_SMALL_SIZE) {
-			size_t bin = small_binidx(next->size);
-			unlink_chunk(&mstate.small_bins[bin], (struct freehdr*) next);
-		} else {
-			unlink_chunk(&mstate.small_top, (struct freehdr*) next);
-		}
+		unlink_small_chunk(next);
 		chunk = merge_chunks(chunk, next);
 	}
 
-	append_small_chunk((struct freehdr*) chunk);
+	append_small_chunk(chunk);
 }
 
 void ft_free(void *p)
@@ -508,14 +527,13 @@ void ft_free(void *p)
 
 	if (!IS_ALGINED_TO(p, MALLOC_ALIGN)) {
 		eprint("free(): invalid pointer\n");
-		return;
+		ft_assert(0);
 	}
 
-	struct memhdr* chunk = mem2chunk(p);
+	struct memhdr *chunk = mem2chunk(p);
 
 	//TODO lock
 	assert_correct();
-
 	if (chunk->cinuse) {
 		setinuse(chunk, false);
 		if (chunk->size <= MAX_SMALL_SIZE)
@@ -526,81 +544,5 @@ void ft_free(void *p)
 		eprint("free(): pointer not allocated\n");
 		ft_assert(0);
 	}
-
 	assert_correct();
-	//TODO unlock
-
 }
-
-void show_alloc_mem(void)
-{
-	dump();
-	eprint("\n");
-}
-
-void *ft_calloc(size_t nmemb, size_t size)
-{
-	size_t n = nmemb * size;
-
-	if (nmemb && n / nmemb != size)
-		return NULL;
-
-	void *res = ft_malloc(n);
-	ft_memset(res, 0, n);
-
-	return res;
-}
-
-void *ft_realloc(void *userptr, size_t size)
-{
-#ifdef TRACES
-	ft_dprintf(STDERR_FILENO, "//ft_realloc(%p, %zu);\n", userptr, size);
-#endif
-	void *res = ft_malloc(size);
-	if (res) {
-		if (userptr) {
-			struct memhdr *hdr = mem2chunk(userptr);
-			ft_memcpy(res, userptr, size > hdr->size ? hdr->size : size);
-		}
-		ft_free(userptr);
-	}
-
-	return res;
-}
-
-void *ft_aligned_alloc(size_t align, size_t size)
-{
-	ft_assert(0 && "todo");
-	//TODO THIS IS VERY WRONG!
-	return ft_malloc(ROUND_UP(size, align));
-}
-
-size_t ft_malloc_usable_size(void *userptr)
-{
-	if (!userptr)
-		return 0;
-	return mem2chunk(userptr)->size;
-}
-
-void *ft_memalign(size_t align, size_t size)
-{
-	(void)align;
-	(void)size;
-	ft_assert(0);
-	return NULL;
-}
-
-void *ft_valloc(size_t size)
-{
-	(void)size;
-	ft_assert(0);
-	return NULL;
-}
-
-void *ft_pvalloc(size_t size)
-{
-	(void) size;
-	ft_assert(0);
-	return NULL;
-}
-

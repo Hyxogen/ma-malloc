@@ -21,7 +21,6 @@ int main(int argc, char **argv)
 		seed = std::atoi(argv[1]);
 
 	std::srand(seed);
-	std::cout << "//seed: " << seed << std::endl;
 	std::cout << "#include \"malloc.h\"" << std::endl << std::endl;
 
 	std::cout << "int main()" << std::endl << "{" << std::endl;
@@ -61,10 +60,18 @@ int main(int argc, char **argv)
 		perror("fork");
 		return 1;
 	}
-	if (wait(NULL) != p && errno != ECHILD) {
+
+	int status = 0;
+	if (wait(&status) != p && errno != ECHILD) {
 		perror("wait");
 		return 1;
 	}
 
 	std::cout << "}" << std::endl;
+	std::cout << "//seed: " << seed << std::endl;
+
+	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+		return 1;
+	}
+	return 0;
 }

@@ -12,3 +12,4 @@
 *.plist
 *.txt
 /hello.c
+/main.c
