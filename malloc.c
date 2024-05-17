@@ -3,8 +3,11 @@
 #include <stdint.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include <ft/stdio.h>
+#include <ft/string.h>
+#include <stdlib.h>
 
 #define MALLOC_ALIGN (_Alignof(max_align_t))
 #define HALF_MALLOC_ALIGN (MALLOC_ALIGN >> 1)
@@ -20,17 +23,33 @@
 #define MAX_LARGE_SIZE 1048576
 
 #define ROUND_UP(x, boundary) ((x + boundary - 1) & ~(boundary - 1))
+#define ROUND_DOWN(x, boundary) ((uintptr_t) x & ~(boundary - 1))
 #define IS_ALGINED_TO(x, boundary) (((uintmax_t)x & (boundary - 1)) == 0)
 
 #ifdef NDEBUG
 #define ft_assert(pred)
 #else
-#include <stdlib.h>
 #define ft_assert(pred)                                                        \
 	ft_assert_impl(!(!(pred)), #pred, __FUNCTION__, __FILE__, __LINE__)
 #endif
 
+#ifndef TRACES
+#define TRACES 0
+#endif
+
 #define eprint(...) ft_dprintf(STDERR_FILENO, __VA_ARGS__)
+
+#ifndef USE_FT_PREFIX
+#define ft_malloc malloc
+#define ft_free free
+#define ft_calloc calloc
+#define ft_realloc realloc
+#define ft_aligned_alloc aligned_alloc
+#define ft_malloc_usable_size malloc_usable_size
+#define ft_memalign memalign
+#define ft_valloc valloc
+#define ft_pvalloc pvalloc
+#endif
 
 struct memhdr {
 	size_t pinuse : 1;
@@ -53,6 +72,7 @@ static struct {
 	struct memhdr *small;
 	struct memhdr *small_top;
 	struct memhdr *small_bins[SMALLBIN_COUNT];
+	uint64_t small_binmap;
 
 	struct memhdr *large;
 	struct memhdr *large_top;
@@ -202,6 +222,7 @@ static void dump()
 	dump_list(mstate.large);
 }
 
+#ifndef NDEBUG
 static void assert_correct_freelist(const struct memhdr *list, size_t min, size_t max)
 {
 	const struct memhdr *cur = list;
@@ -281,6 +302,9 @@ static void assert_correct(void)
 
 	assert_correct_freelist(mstate.large_bins[LARGEBIN_COUNT -1], 0, -1);
 }
+#else
+static void assert_correct(void) {}
+#endif
 
 static void unlink_chunk(struct memhdr **list, struct memhdr *hdr)
 {
@@ -335,6 +359,7 @@ static struct memhdr *split_chunk(struct memhdr *chunk, size_t n)
 	setsize(chunk, n);
 
 	struct memhdr *next = nexthdr(chunk);
+	next->cinuse = false;
 	setsize(next, rem - HEADER_SIZE_INUSE);
 	setinuse(next, false);
 
@@ -346,6 +371,10 @@ static struct memhdr *split_chunk(struct memhdr *chunk, size_t n)
 static struct memhdr **find_bin(size_t n)
 {
 	size_t bin = small_binidx(n);
+
+	/*uint64_t mask = ~((1 << bin) - 1);
+	uint64_t idx = __builtin_clz(mask & mstate.small_binmap);
+	return*/
 
 	while (bin < SMALLBIN_COUNT) {
 		struct memhdr **list = &mstate.small_bins[bin];
@@ -562,6 +591,15 @@ static void *malloc_large(size_t n)
 	return chunk;
 }
 
+static void *malloc_huge(size_t n)
+{
+	struct memhdr *chunk = alloc_chunk(n);
+	if (chunk) {
+		chunk->mapped = true;
+	}
+	return chunk;
+}
+
 static void init_malloc(void)
 {
 	mstate.pagesize = getpagesize();
@@ -582,6 +620,9 @@ static void init_malloc(void)
 
 void *ft_malloc(size_t n)
 {
+#if TRACES
+	ft_printf("//ft_malloc(%zu);\n", n);
+#endif
 	static bool initialized = false;
 
 	if (!initialized) {
@@ -601,7 +642,7 @@ void *ft_malloc(size_t n)
 	else if (n <= MAX_LARGE_SIZE)
 		chunk = malloc_large(n);
 	else
-		ft_assert(0);
+		chunk = malloc_huge(n);
 
 	if (chunk)
 		setinuse(chunk, true);
@@ -612,8 +653,15 @@ void *ft_malloc(size_t n)
 	if (chunk) {
 		void *p = chunk2mem(chunk);
 		ft_assert(IS_ALGINED_TO(p, MALLOC_ALIGN));
+
+#if TRACES
+	ft_printf("void *tmp_%p = ft_malloc(%zu);\n", p, n);
+#endif
 		return p;
 	}
+#if TRACES
+	ft_printf("void *tmp_0x0 = ft_malloc(%zu);\n", n);
+#endif
 	return NULL;
 }
 
@@ -655,6 +703,7 @@ static struct memhdr *merge_chunks(struct memhdr *a, struct memhdr *b)
 static void free_small(struct memhdr *chunk)
 {
 	chunk->next = chunk->prev = NULL; // TODO debug code, remove
+	setsize(chunk, chunk->size); // set footer
 
 	if (!chunk->pinuse) {
 		struct memhdr *prev = prevhdr(chunk);
@@ -674,6 +723,7 @@ static void free_small(struct memhdr *chunk)
 static void free_large(struct memhdr *chunk)
 {
 	chunk->next = chunk->prev = NULL;
+	setsize(chunk, chunk->size); //set footer
 
 	if (!chunk->pinuse) {
 		struct memhdr *prev = prevhdr(chunk);
@@ -690,8 +740,19 @@ static void free_large(struct memhdr *chunk)
 	append_large_chunk(chunk);
 }
 
+static void free_huge(struct memhdr *chunk)
+{
+	struct memhdr *start = (void*) ROUND_DOWN(chunk, mstate.pagesize);
+
+	if (munmap(start, 4* HEADER_SIZE_INUSE + chunk->size) != 0)
+		perror("munmap");
+}
+
 void ft_free(void *p)
 {
+#if TRACES
+	ft_printf("ft_free(tmp_%p);\n", p);
+#endif
 	if (!p)
 		return;
 
@@ -711,10 +772,74 @@ void ft_free(void *p)
 		else if (chunk->size <= MAX_LARGE_SIZE)
 			free_large(chunk);
 		else
-			ft_assert(0);
+			free_huge(chunk);
 	} else {
 		eprint("free(): pointer not allocated\n");
 		ft_assert(0);
 	}
 	assert_correct();
+}
+
+void *ft_calloc(size_t nmemb, size_t size)
+{
+        size_t n = nmemb * size;
+
+        if (nmemb && n / nmemb != size)
+                return NULL;
+
+        void *res = ft_malloc(n);
+        ft_memset(res, 0, n);
+
+        return res;
+}
+
+void *ft_realloc(void *userptr, size_t size)
+{
+        void *res = ft_malloc(size);
+        if (res) {
+                if (userptr) {
+                        struct memhdr *hdr = mem2chunk(userptr);
+                        ft_memcpy(res, userptr, size > hdr->size ? hdr->size : size);
+                }
+                ft_free(userptr);
+        }
+
+        return res;
+}
+
+void *ft_aligned_alloc(size_t align, size_t size)
+{
+        (void)align;
+        (void)size;
+        ft_assert(0);
+        return NULL;
+}
+
+size_t ft_malloc_usable_size(void *userptr)
+{
+        if (!userptr)
+                return 0;
+        return mem2chunk(userptr)->size;
+}
+
+void *ft_memalign(size_t align, size_t size)
+{
+        (void)align;
+        (void)size;
+        ft_assert(0);
+        return NULL;
+}
+
+void *ft_valloc(size_t size)
+{
+        (void)size;
+        ft_assert(0);
+        return NULL;
+}
+
+void *ft_pvalloc(size_t size)
+{
+        (void) size;
+        ft_assert(0);
+        return NULL;
 }
