@@ -1,5 +1,6 @@
 NAME		:= malloc.so
 
+
 CC		:= clang
 CXX		:= clang++
 
@@ -9,7 +10,7 @@ LIBFT_LIB	:= $(LIBFT_DIR)/libft.a
 SRC_FILES	:= malloc.c
 OBJ_FILES	:= malloc.o
 
-CFLAGS		:= -Wall -Wextra -O1 -g3 -fno-inline -DTRACES=0 -DNDEBUG
+CFLAGS		:= -Wall -Wextra -O0 -g3 -DTRACES=0
 LFLAGS		:= -shared -lpthread
 
 all: $(NAME)
@@ -20,6 +21,7 @@ $(NAME): $(OBJ_FILES) $(LIBFT_LIB)
 %.o: %.c Makefile
 	$(CC) -c $< -o $@ $(CFLAGS) -I$(LIBFT_DIR)/include
 
+test: CFLAGS += -DUSE_FT_PREFIX
 test: $(OBJ_FILES) hammer.cc Makefile
 	$(CXX) hammer.cc -std=c++20 $< $(LIBFT_LIB) -g3 -Og -Wall -Wextra -o $@
 

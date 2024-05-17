@@ -17,6 +17,8 @@
 #define MIN_ALLOC_SIZE (MIN_CHUNK_SIZE - HEADER_SIZE_INUSE)
 #define SMALLBIN_COUNT 64
 #define LARGEBIN_COUNT 64
+#define NEXTHDR(chunk) ((struct memhdr *)((char *)chunk + ((struct memhdr*) chunk)->size + HEADER_SIZE_INUSE))
+#define FTR(chunk) ((struct memftr *)((char *)chunk + ((struct memhdr*)chunk)->size + HEADER_SIZE_INUSE - FOOTER_SIZE))
 
 #define MAX_SMALL_SIZE 1016
 #define MIN_LARGE_SIZE 1024
@@ -128,14 +130,14 @@ static void setsize(void *chunk, size_t n)
 	ft_assert(!hdr->cinuse);
 
 	hdr->size = n;
-	getftr(chunk)->size = n;
+	FTR(chunk)->size = n;
 }
 
 static void setinuse(void *chunk, bool val)
 {
 	struct memhdr *hdr = (struct memhdr *)chunk;
 
-	hdr->cinuse = nexthdr(chunk)->pinuse = val;
+	hdr->cinuse = NEXTHDR(chunk)->pinuse = val;
 }
 
 static void *chunk2mem(const void *chunk)
@@ -360,6 +362,7 @@ static struct memhdr *split_chunk(struct memhdr *chunk, size_t n)
 
 	struct memhdr *next = nexthdr(chunk);
 	next->cinuse = false;
+	next->mapped = chunk->mapped;
 	setsize(next, rem - HEADER_SIZE_INUSE);
 	setinuse(next, false);
 
@@ -372,17 +375,19 @@ static struct memhdr **find_bin(size_t n)
 {
 	size_t bin = small_binidx(n);
 
-	/*uint64_t mask = ~((1 << bin) - 1);
-	uint64_t idx = __builtin_clz(mask & mstate.small_binmap);
-	return*/
+	while (1) {
+		uint64_t mask = ~((1ull << bin) - 1);
+		uint64_t x = mask & mstate.small_binmap;
+		if (!x)
+			return NULL;
 
-	while (bin < SMALLBIN_COUNT) {
-		struct memhdr **list = &mstate.small_bins[bin];
-		if (*list)
-			return list;
-		bin += 1;
+		uint64_t i = __builtin_ctzll(x);
+		if (!mstate.small_bins[i]) {
+			mstate.small_binmap ^= 1ull << i;
+			continue;
+		}
+		return &mstate.small_bins[i];
 	}
-	return NULL;
 }
 
 static void append_small_chunk(struct memhdr *chunk)
@@ -392,6 +397,8 @@ static void append_small_chunk(struct memhdr *chunk)
 	struct memhdr **list = &mstate.small_top;
 	if (chunk->size <= MAX_SMALL_SIZE) {
 		size_t bin = small_binidx(chunk->size);
+
+		mstate.small_binmap |= 1 << bin;
 		list = &mstate.small_bins[bin];
 	}
 	append_chunk(list, chunk);
@@ -809,10 +816,53 @@ void *ft_realloc(void *userptr, size_t size)
 
 void *ft_aligned_alloc(size_t align, size_t size)
 {
-        (void)align;
-        (void)size;
-        ft_assert(0);
-        return NULL;
+	if (align <= MALLOC_ALIGN)
+		return ft_malloc(size);
+	if (align == MIN_CHUNK_SIZE)
+		align += 1;
+	if (size + align - 1 > MAX_LARGE_SIZE)
+		return NULL;//not supported (for now)
+
+	//TODO LOCK HERE
+	void *p = ft_malloc(size + align - 1);//make sure it doesn't deadlock
+	if (IS_ALGINED_TO(p, align)) {
+		//TODO unlock
+		return p;
+	}
+
+	assert_correct();
+
+	void *alignedp = (void*) ROUND_UP((uintptr_t) p, align);
+	struct memhdr *chunk = mem2chunk(p);
+
+	size_t diff = alignedp - p;
+	size_t old_size = chunk->size;
+	size_t aligned_size = chunk->size - diff;
+
+	chunk->cinuse = false;
+	setsize(chunk, diff - HEADER_SIZE_INUSE);
+
+	struct memhdr *aligned_chunk = mem2chunk(alignedp);
+	aligned_chunk->pinuse = false;
+	aligned_chunk->cinuse = false;
+	aligned_chunk->mapped = chunk->mapped;
+	setsize(aligned_chunk, aligned_size);
+	setinuse(aligned_chunk, true);
+
+	//TODO lock
+	//WARNING: IF WE LOCK HERE, THE PREVIOUS CHUNK BEFORE "chunk" COULD HAVE
+	//BEEN FREED AND WE SHOULD COALESCE!
+	if (old_size <= MAX_SMALL_SIZE)
+		append_small_chunk(chunk);
+	else if (old_size <= MAX_LARGE_SIZE)
+		append_large_chunk(chunk);
+	else
+		ft_assert(0);
+
+	assert_correct();
+	//TODO unlock
+	ft_assert(IS_ALGINED_TO(alignedp, align));
+        return alignedp;
 }
 
 size_t ft_malloc_usable_size(void *userptr)
