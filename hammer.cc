@@ -30,13 +30,13 @@ int main(int argc, char **argv)
 	if (p == 0) {
 		std::vector<std::pair<void*, int>> live;
 		int num = 0;
-		int count = std::rand() % 4096;
+		int count = std::rand() % 1024;
 
 		for (int i = 0; i < count; ++i) {
 			if (((unsigned) std::rand()) & 1) {
 				std::cout << "\t";
 
-				size_t s = std::rand() % 1017;
+				size_t s = std::rand() % 1048576;
 				std::cout << "void *p_" << num << " = ft_malloc(" << s << ");" << std::endl;
 
 				void *p = ft_malloc(s);
