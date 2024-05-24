@@ -10,6 +10,7 @@
 #include <ft/string.h>
 
 // TODO remove
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -110,9 +111,15 @@ static struct {
 	pthread_mutex_t mtx;
 
 	bool err;
+
+	int dump_fd;
 } mstate;
 
+#ifndef FT_NDEBUG
 static void assert_correct(void);
+#else
+static void assert_correct(void) {}
+#endif
 
 static struct memftr *get_ftr_unsafe(const void *chunk);
 static struct memftr *get_ftr(const void *chunk);
@@ -264,6 +271,11 @@ static struct memftr *get_ftr(const void *chunk)
 	return get_ftr_unsafe(chunk);
 }
 
+__attribute__ ((destructor)) static void deinit(void)
+{
+	close(mstate.dump_fd);
+}
+
 static void maybe_initialize(void)
 {
 	static bool initialized = false;
@@ -271,6 +283,12 @@ static void maybe_initialize(void)
 		return;
 
 	initialized = true;
+
+	mstate.dump_fd = open("dump.txt", O_CREAT | O_TRUNC | O_WRONLY, 0777);
+	if (mstate.dump_fd < 0) {
+		perror("open");
+		abort();
+	}
 
 	mstate.pagesize = getpagesize();
 	if (pthread_mutex_init(&mstate.mtx, NULL)) {
@@ -754,7 +772,7 @@ void *ft_malloc(size_t n)
 	maybe_initialize();
 
 #if TRACES
-	ft_printf("//ft_malloc(%zu);\n", n);
+	ft_dprintf(mstate.dump_fd, "//ft_malloc(%zu);\n", n);
 #endif
 
 	if (!check_requestsize(n))
@@ -772,7 +790,7 @@ void *ft_malloc(size_t n)
 	ft_assert(!p || IS_ALIGNED_TO(p, MALLOC_ALIGN));
 
 #if TRACES
-	ft_printf("void *tmp_%p = ft_malloc(%zu);\n", p, n);
+	ft_dprintf(mstate.dump_fd, "void *tmp_%p = ft_malloc(%zu);\n", p, n);
 #endif
 
 	return p;
@@ -780,11 +798,15 @@ void *ft_malloc(size_t n)
 
 void ft_free(void *p)
 {
+	if (!p) {
 #if TRACES
-	ft_printf("ft_free(tmp_%p);\n", p);
+		ft_dprintf(mstate.dump_fd, "ft_free(NULL);\n");
 #endif
-	if (!p)
 		return;
+	}
+#if TRACES
+	ft_dprintf(mstate.dump_fd, "ft_free(tmp_%p);\n", p);
+#endif
 
 	if (!lock())
 		return;
@@ -799,7 +821,7 @@ void ft_free(void *p)
 void *ft_calloc(size_t nmemb, size_t size)
 {
 #if TRACES
-	ft_printf("//ft_calloc(%zu, %zu);\n", nmemb, size);
+	ft_dprintf(mstate.dump_fd, "//ft_calloc(%zu, %zu);\n", nmemb, size);
 #endif
         size_t n = nmemb * size;
 
