@@ -403,7 +403,6 @@ static struct memhdr *split_chunk(struct memhdr *chunk, size_t n)
 
 	set_size(chunk, n);
 	set_inuse(chunk, false);
-	set_ftr(chunk);//probably not needed
 
 	struct memhdr *next = next_hdr(chunk);
 
