@@ -10,10 +10,10 @@ LIBFT_LIB	:= $(LIBFT_DIR)/libft.a
 SRC_FILES	:= malloc.c
 OBJ_FILES	:= malloc.o
 
-CFLAGS		:= -Wall -Wextra -O0 -g3 -DTRACES=0
+CFLAGS		:= -Wall -Wextra -O3 -g3 -DTRACES=0
 LFLAGS		:= -shared -lpthread
 
-all: $(NAME)
+all: $(NAME) test
 
 $(NAME): $(OBJ_FILES) $(LIBFT_LIB)
 	$(CC) $< $(LIBFT_LIB) $(LFLAGS) -o $@
@@ -23,7 +23,7 @@ $(NAME): $(OBJ_FILES) $(LIBFT_LIB)
 
 test: CFLAGS += -DUSE_FT_PREFIX
 test: $(OBJ_FILES) hammer.cc Makefile
-	$(CXX) hammer.cc -std=c++20 $< $(LIBFT_LIB) -g3 -Og -Wall -Wextra -o $@
+	$(CXX) hammer.cc -std=c++20 $< $(LIBFT_LIB) -g3 -O3 -Wall -Wextra -o $@
 
 $(LIBFT_LIB): Makefile
 	@${MAKE} -C $(LIBFT_DIR) san=none
