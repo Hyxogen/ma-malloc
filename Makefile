@@ -10,7 +10,7 @@ LIBFT_LIB	:= $(LIBFT_DIR)/libft.a
 SRC_FILES	:= malloc.c
 OBJ_FILES	:= malloc.o
 
-CFLAGS		:= -Wall -Wextra -O3 -g -DTRACES=1 -DUSE_FT_PREFIX=0
+CFLAGS		:= -Wall -Wextra -O3 -g -DTRACES=0 -DUSE_FT_PREFIX=0 -DFT_NDEBUG
 LFLAGS		:= -shared -lpthread -flto
 
 all: $(NAME)

@@ -106,7 +106,7 @@ static struct {
 	struct memhdr *debug[2];
 	struct memhdr *chunk_tops[2];
 	struct memhdr *bins[BIN_COUNT];
-	uint64_t small_binmap;
+	uint64_t binmaps[2];
 
 	pthread_mutex_t mtx;
 
@@ -450,7 +450,7 @@ static struct memhdr *find_bestfit(const struct memhdr *list, size_t n)
 	return (struct memhdr *)best;
 }
 
-static struct memhdr **get_list(const struct memhdr *chunk)
+static struct memhdr **get_list(const struct memhdr *chunk, size_t *selected_bin)
 {
 	ft_assert(!is_mapped(chunk));
 
@@ -459,9 +459,11 @@ static struct memhdr **get_list(const struct memhdr *chunk)
 	if (get_size(chunk) <= MAX_LARGE_SIZE) {
 		size_t bin = binidx(get_size(chunk));
 		list = &mstate.bins[bin];
+		*selected_bin = bin;
 	} else {
 		size_t idx = freelist_idx(chunk);
 		list = &mstate.chunk_tops[idx];
+		*selected_bin = BIN_COUNT + 1;
 	}
 
 	return list;
@@ -469,13 +471,21 @@ static struct memhdr **get_list(const struct memhdr *chunk)
 
 static void append_chunk_any(struct memhdr *chunk)
 {
-	struct memhdr **list = get_list(chunk);
+	size_t bin;
+	struct memhdr **list = get_list(chunk, &bin);
+
+	if (bin < SMALLBIN_COUNT) {
+		mstate.binmaps[0] |= 1 << bin;
+	} else if (bin < BIN_COUNT) {
+		mstate.binmaps[1] |= 1 << (bin - SMALLBIN_COUNT);
+	}
 	append_chunk(list, chunk);
 }
 
 static void unlink_chunk_any(struct memhdr *chunk)
 {
-	struct memhdr **list = get_list(chunk);
+	size_t tmp;
+	struct memhdr **list = get_list(chunk, &tmp);
 	unlink_chunk(list, chunk);
 }
 
@@ -537,7 +547,7 @@ static struct memhdr *find_small_bin(size_t n, struct memhdr ***from)
 
 	while (1) {
 		uint64_t mask = ~((1ull << bin) - 1);
-		uint64_t bins = mask & mstate.small_binmap;
+		uint64_t bins = mask & mstate.binmaps[0];
 
 		if (!bins)
 			return NULL;
@@ -551,7 +561,7 @@ static struct memhdr *find_small_bin(size_t n, struct memhdr ***from)
 			return *list;
 		}
 
-		mstate.small_binmap ^= 1ull << i;
+		mstate.binmaps[0] ^= 1ull << i;
 	}
 }
 
@@ -560,14 +570,24 @@ static struct memhdr *find_large_bin(size_t n, struct memhdr ***from)
 	size_t bin = large_binidx(n);
 
 	while (bin < BIN_COUNT) {
-		struct memhdr **list = &mstate.bins[bin];
+		uint64_t offset = bin - SMALLBIN_COUNT;
+		uint64_t mask = ~((1ull << offset) -1);
+		uint64_t bins = mask & mstate.binmaps[1];
 
+		if (!bins)
+			return NULL;
+
+		uint64_t i = SMALLBIN_COUNT + count_trailing_zeros(bins);
+
+		struct memhdr **list = &mstate.bins[i];
 		if (*list) {
 			struct memhdr *chunk = find_bestfit(*list, n);
 			if (chunk) {
 				*from = list;
 				return chunk;
 			}
+		} else {
+			mstate.binmaps[1] ^= 1ull << offset;
 		}
 		bin += 1;
 	}
