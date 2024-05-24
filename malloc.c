@@ -11,6 +11,7 @@
 
 // TODO remove
 #include <stdio.h>
+#include <stdlib.h>
 
 #define FOOTER_SIZE (sizeof(size_t))
 #define HEADER_SIZE (sizeof(size_t))
@@ -380,7 +381,8 @@ static struct memhdr *split_chunk(struct memhdr *chunk, size_t n)
 	ft_assert(!is_inuse(chunk));
 
 	set_size(chunk, n);
-	set_ftr(chunk);
+	set_inuse(chunk, false);
+	set_ftr(chunk);//probably not needed
 
 	struct memhdr *next = next_hdr(chunk);
 
@@ -973,6 +975,7 @@ static void dump(void)
 	dump_list(mstate.debug[1]);
 }
 
+#ifndef FT_NDEBUG
 static void assert_correct_chunk(const struct memhdr *chunk)
 {
 	if (is_sentinel(chunk))
@@ -1062,3 +1065,4 @@ static void assert_correct(void)
 		size += 16;
 	}
 }
+#endif
