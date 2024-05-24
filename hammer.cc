@@ -11,6 +11,7 @@ extern "C" {
 #include <cerrno>
 #include <random>
 #include <cassert>
+#include <cstring>
 
 static void dump_file(FILE *dest, FILE *file)
 {
@@ -53,8 +54,6 @@ int main()
 
 		for (int i = 0; i < count; ++i) {
 			if (bool_distr(gen)) {
-				fprintf(out, "\t");
-
 				size_t s = 0;
 
 				if (bool_distr(gen)) {
@@ -63,9 +62,14 @@ int main()
 					s = large_distr(gen);
 				}
 
-				fprintf(out, "void *p_%i = ft_malloc(%zu);\n", num, s);
+				fprintf(out, "\tvoid *p_%i = ft_malloc(%zu);\n", num, s);
 
 				void *p = ft_malloc(s);
+
+				const unsigned char fill_byte = 0xbe;
+
+				fprintf(out, "\tmemset(p_%i, %hhu, %zu);\n", num, fill_byte, s);
+				memset(p, fill_byte, s);
 				if (p) {
 					live.push_back({p, num});
 

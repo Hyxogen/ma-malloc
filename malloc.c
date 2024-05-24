@@ -58,7 +58,7 @@ _Static_assert(SMALLBIN_COUNT <= sizeof(uint64_t) * 8, "");
 #define ft_pvalloc pvalloc
 #endif
 
-#ifdef NDEBUG
+#ifdef FT_NDEBUG
 #define ft_assert(pred)
 #else
 #include <stdlib.h>
@@ -113,6 +113,7 @@ static struct {
 
 static void assert_correct(void);
 
+static struct memftr *get_ftr_unsafe(const void *chunk);
 static struct memftr *get_ftr(const void *chunk);
 static bool is_inuse(const void *chunk);
 static bool is_pinuse(const void *chunk);
@@ -161,7 +162,7 @@ static void set_size(void *chunk, size_t n)
 	}
 
 	hdr->_size = n;
-	get_ftr(chunk)->_size = n;
+	get_ftr_unsafe(chunk)->_size = n;
 }
 
 static struct memhdr *next_hdr(const void *chunk)
@@ -250,12 +251,16 @@ static size_t freelist_idx(const struct memhdr *chunk)
 	return 1;
 }
 
+static struct memftr *get_ftr_unsafe(const void *chunk)
+{
+	return (struct memftr *)((char *)chunk + get_size(chunk) + HEADER_SIZE -
+				 FOOTER_SIZE);
+}
+
 static struct memftr *get_ftr(const void *chunk)
 {
-	struct memhdr *hdr = (struct memhdr *)chunk;
 	ft_assert(!is_inuse(chunk) && "no footer present on allocated chunk");
-	return (struct memftr *)((char *)chunk + get_size(hdr) + HEADER_SIZE -
-				 FOOTER_SIZE);
+	return get_ftr_unsafe(chunk);
 }
 
 static void maybe_initialize(void)
@@ -368,6 +373,7 @@ static void unlink_chunk(struct memhdr **list, struct memhdr *chunk)
 
 static struct memhdr *split_chunk(struct memhdr *chunk, size_t n)
 {
+	ft_assert(get_size(chunk) >= n);
 	size_t rem = get_size(chunk) - n;
 
 	ft_assert(rem >= MIN_CHUNK_SIZE);
@@ -745,6 +751,10 @@ void *ft_malloc(size_t n)
 {
 	maybe_initialize();
 
+#if TRACES
+	ft_printf("//ft_malloc(%zu);\n", n);
+#endif
+
 	if (!check_requestsize(n))
 		return NULL; // fast path before lock
 
@@ -759,11 +769,18 @@ void *ft_malloc(size_t n)
 
 	ft_assert(!p || IS_ALIGNED_TO(p, MALLOC_ALIGN));
 
+#if TRACES
+	ft_printf("void *tmp_%p = ft_malloc(%zu);\n", p, n);
+#endif
+
 	return p;
 }
 
 void ft_free(void *p)
 {
+#if TRACES
+	ft_printf("ft_free(tmp_%p);\n", p);
+#endif
 	if (!p)
 		return;
 
@@ -779,6 +796,9 @@ void ft_free(void *p)
 
 void *ft_calloc(size_t nmemb, size_t size)
 {
+#if TRACES
+	ft_printf("//ft_calloc(%zu, %zu);\n", nmemb, size);
+#endif
         size_t n = nmemb * size;
 
         if (nmemb && n / nmemb != size)
@@ -806,12 +826,64 @@ void *ft_realloc(void *userptr, size_t size)
         return res;
 }
 
+static void *aligned_alloc_no_lock(size_t align, size_t size)
+{
+	ft_assert(align > MALLOC_ALIGN);
+
+	if (!check_requestsize(size))
+		return NULL;
+
+	void *p = malloc_no_lock(size + 2 * align - 1);
+	if (!p)
+		return NULL;
+
+	void *alignedp = (void*) ROUND_UP((uintptr_t) p, align);
+
+	if (p != alignedp) {
+		size_t diff = alignedp - p;
+
+		if (diff < MIN_CHUNK_SIZE) {
+			alignedp = (void*) ROUND_UP((uintptr_t) alignedp + 1, align);
+			diff = alignedp - p;
+		}
+
+		ft_assert(diff >= MIN_CHUNK_SIZE);
+
+		struct memhdr *chunk = mem2chunk(p);
+
+		set_inuse(chunk, false);
+		struct memhdr *aligned_chunk = split_chunk(chunk, diff - HEADER_SIZE);
+		set_inuse(aligned_chunk, true);
+
+		ft_assert(get_size(aligned_chunk) >= size);
+		ft_assert(chunk2mem(aligned_chunk) == alignedp);
+		
+		if (!is_mapped(chunk))
+			append_chunk_any(chunk);
+	}
+
+	return alignedp;
+}
+
 void *ft_aligned_alloc(size_t align, size_t size)
 {
-	(void)align;
-	(void)size;
-	errno = ENOMEM;
-	return NULL;
+	if (align <= MALLOC_ALIGN)
+		return ft_malloc(size);
+
+	maybe_initialize();
+
+	if (!check_requestsize(size))
+		return NULL;
+
+	if (!lock())
+		return NULL;
+
+	void *p = aligned_alloc_no_lock(align, size);
+
+	unlock();
+
+	ft_assert(!p || IS_ALIGNED_TO(p, align));
+	return p;
 }
 
 size_t ft_malloc_usable_size(void *userptr)
@@ -827,6 +899,7 @@ void *ft_memalign(size_t align, size_t size)
         (void)align;
         (void)size;
 	errno = ENOMEM;
+	ft_assert(0);
         return NULL;
 }
 
@@ -834,6 +907,7 @@ void *ft_valloc(size_t size)
 {
         (void)size;
 	errno = ENOMEM;
+	ft_assert(0);
         return NULL;
 }
 
@@ -841,6 +915,7 @@ void *ft_pvalloc(size_t size)
 {
         (void) size;
 	errno = ENOMEM;
+	ft_assert(0);
         return NULL;
 }
 

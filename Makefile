@@ -10,10 +10,10 @@ LIBFT_LIB	:= $(LIBFT_DIR)/libft.a
 SRC_FILES	:= malloc.c
 OBJ_FILES	:= malloc.o
 
-CFLAGS		:= -Wall -Wextra -O3 -g3 -DTRACES=0
+CFLAGS		:= -Wall -Wextra -O0 -g3 -DTRACES=0 -DUSE_FT_PREFIX=0
 LFLAGS		:= -shared -lpthread
 
-all: $(NAME) test
+all: $(NAME)
 
 $(NAME): $(OBJ_FILES) $(LIBFT_LIB)
 	$(CC) $< $(LIBFT_LIB) $(LFLAGS) -o $@
