@@ -113,6 +113,9 @@ static struct {
 	bool err;
 
 	int dump_fd;
+
+	size_t mmapped;
+	size_t allocated;
 } mstate;
 
 #ifndef FT_NDEBUG
@@ -456,6 +459,34 @@ static struct memhdr **get_list(const struct memhdr *chunk, size_t *selected_bin
 
 	struct memhdr **list = NULL;
 
+	size_t size = get_size(chunk);
+	*selected_bin = BIN_COUNT + 1;
+
+	if (is_small(chunk)) {
+		if (get_size(chunk) <= MAX_SMALL_SIZE) {
+			size_t bin = small_binidx(size);
+			list = &mstate.bins[bin];
+			*selected_bin = bin;
+		} else {
+			list = &mstate.chunk_tops[0];
+		}
+	} else {
+		if (get_size(chunk) <= MAX_LARGE_SIZE) {
+			size_t bin = binidx(get_size(chunk));
+			list = &mstate.bins[bin];
+			*selected_bin = bin;
+		} else {
+			size_t idx = freelist_idx(chunk);
+			list = &mstate.chunk_tops[idx];
+		}
+	}
+	/*
+	this is how glibc kindof does it and probably way better...
+
+	TODO just put the chunk in the best size bin instead of preferring the
+	original chunk_top, MAKE SURE THAT MALLOC_COMMON ALSO SEARCHES IN ALL
+	BINS!!!
+
 	if (get_size(chunk) <= MAX_LARGE_SIZE) {
 		size_t bin = binidx(get_size(chunk));
 		list = &mstate.bins[bin];
@@ -465,6 +496,7 @@ static struct memhdr **get_list(const struct memhdr *chunk, size_t *selected_bin
 		list = &mstate.chunk_tops[idx];
 		*selected_bin = BIN_COUNT + 1;
 	}
+	*/
 
 	return list;
 }
@@ -515,6 +547,8 @@ static struct memhdr *alloc_chunk(size_t minsize, bool small, bool large)
 
 	if (chunk == MAP_FAILED)
 		return NULL;
+
+	mstate.mmapped += mmap_size;
 
 	_Static_assert(2 * HEADER_SIZE == MALLOC_ALIGN,
 		       "basic assumption for alloc_chunk");
@@ -639,13 +673,19 @@ static struct memhdr *malloc_from_new_chunk(size_t n)
 	chunksize *= CHUNKS_PER_ZONE;
 
 	struct memhdr *chunk = alloc_chunk(chunksize, small, !small);
+	if (!chunk)
+		return NULL;
 	ft_assert(is_small(chunk) || is_large(chunk));
 
 	size_t idx = freelist_idx(chunk);
 	if (!mstate.debug[idx])
 		mstate.debug[idx] = chunk;
-	if (chunk)
-		maybe_split(chunk, n);
+
+	//chunk should be so big that it must always be split
+	ft_assert(should_split(chunk, n));
+
+	struct memhdr *rem = split_chunk(chunk, n);
+	append_chunk_any(rem);
 	return chunk;
 }
 
@@ -759,6 +799,7 @@ static void *malloc_no_lock(size_t n)
 		chunk = alloc_chunk(n, false, false);
 
 	if (chunk) {
+		mstate.allocated += get_size(chunk);
 		set_inuse(chunk, true);
 		return chunk2mem(chunk);
 	}
@@ -1015,6 +1056,11 @@ static void dump(void)
 	dump_list(mstate.debug[0]);
 	eprint("LARGE:\n");
 	dump_list(mstate.debug[1]);
+}
+
+void show_alloc_mem(void)
+{
+	dump();
 }
 
 #ifndef FT_NDEBUG
