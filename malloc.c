@@ -326,15 +326,13 @@ static bool is_sentinel(const void *chunk)
 
 static void set_ftr(void *chunk)
 {
-	//struct memhdr *hdr = (struct memhdr *)chunk;
-	ft_assert(!is_inuse(chunk));
+	struct memhdr *hdr = (struct memhdr *)chunk;
+	ft_assert(!is_inuse(hdr));
 
-	size_t hdr = *(size_t*) chunk;
-	*((size_t*) get_ftr(chunk)) = hdr;
-	/*struct memftr *ftr = get_ftr(hdr);
+	struct memftr *ftr = get_ftr(hdr);
 	ftr->_small = hdr->_small;
 	ftr->_large = hdr->_large;
-	ftr->_size = hdr->_size;*/
+	ftr->_size = hdr->_size;
 }
 
 static void set_inuse(void *chunk, bool val)
@@ -395,7 +393,7 @@ static void unlink_chunk(struct memhdr **list, struct memhdr *chunk)
 	}
 }
 
-__attribute__ ((noinline)) static struct memhdr *split_chunk(struct memhdr *chunk, size_t n)
+static struct memhdr *split_chunk(struct memhdr *chunk, size_t n)
 {
 	ft_assert(get_size(chunk) >= n);
 	size_t rem = get_size(chunk) - n;
