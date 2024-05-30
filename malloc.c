@@ -324,15 +324,22 @@ static bool is_sentinel(const void *chunk)
 	return hdr->_size == 0;
 }
 
+static void set_ftr_no_check(void *chunk)
+{
+	struct memhdr *hdr = (struct memhdr *)chunk;
+
+	struct memftr *ftr = get_ftr_unsafe(hdr);
+	ftr->_small = hdr->_small;
+	ftr->_large = hdr->_large;
+	ftr->_size = hdr->_size;
+}
+
 static void set_ftr(void *chunk)
 {
 	struct memhdr *hdr = (struct memhdr *)chunk;
 	ft_assert(!is_inuse(hdr));
 
-	struct memftr *ftr = get_ftr(hdr);
-	ftr->_small = hdr->_small;
-	ftr->_large = hdr->_large;
-	ftr->_size = hdr->_size;
+	set_ftr_no_check(chunk);
 }
 
 static void set_inuse(void *chunk, bool val)
@@ -918,6 +925,95 @@ void *ft_calloc(size_t nmemb, size_t size)
         return res;
 }
 
+static void* realloc_slow(struct memhdr *old_chunk, size_t newsize)
+{
+	void *res = malloc_no_lock(newsize);
+
+	if (res) {
+		size_t oldsize = get_size(old_chunk);
+
+		ft_memcpy(res, chunk2mem(old_chunk), newsize < oldsize ? newsize : oldsize);
+		free_no_lock(chunk2mem(old_chunk));
+	}
+	return res;
+}
+
+static void* realloc_shrink(struct memhdr *old_chunk, size_t newsize)
+{
+	size_t old_size = get_size(old_chunk);
+
+	ft_assert(old_size >= newsize);
+	size_t rem = old_size - newsize;
+
+	if (rem >= MIN_CHUNK_SIZE) {
+		set_size(old_chunk, newsize);
+
+		struct memhdr *next = next_hdr(old_chunk);
+		next->_small = old_chunk->_small;
+		next->_large = old_chunk->_large;
+		next->_pinuse = true;
+		set_size(next, rem - HEADER_SIZE);
+		set_inuse(next, false);
+		set_ftr(next);
+
+		struct memhdr *nextnext = next_hdr(next);
+
+		if (!is_sentinel(nextnext) && !is_inuse(nextnext)) {
+			unlink_chunk_any(nextnext);
+			next = merge_chunks(next, nextnext);
+		}
+
+		append_chunk_any(next);
+	}
+	return chunk2mem(old_chunk);
+}
+
+static void* realloc_grow(struct memhdr *old_chunk, size_t newsize)
+{
+	size_t old_size = get_size(old_chunk);
+
+	ft_assert(old_size <= newsize);
+
+	size_t needed = pad_request_size(newsize - old_size);
+
+	struct memhdr *next = next_hdr(old_chunk);
+	if (is_inuse(next) || get_size(next) + HEADER_SIZE < needed)
+		return realloc_slow(old_chunk, newsize);
+
+	unlink_chunk_any(next);
+	if (should_split(next, needed)) {
+		append_chunk_any(split_chunk(next, needed));
+		set_size(old_chunk, old_size + needed + HEADER_SIZE);
+	} else {
+		set_size(old_chunk, old_size + get_size(next) + HEADER_SIZE);
+	}
+
+	set_inuse(old_chunk, true); //to set pinuse of the next chunk
+	return chunk2mem(old_chunk);
+}
+
+static void* realloc_no_lock(void *userptr, size_t size)
+{
+	ft_assert(userptr);
+	ft_assert(size > 0);
+
+	size = pad_request_size(size);
+
+	struct memhdr *chunk = mem2chunk(userptr);
+
+	if ((size <= MAX_SMALL_SIZE && is_small(chunk)) ||
+	    (size >= MIN_LARGE_SIZE && size <= MAX_LARGE_SIZE && is_large(chunk))) {
+		if (size < get_size(chunk))
+			return realloc_shrink(chunk, size);
+		else if (size > get_size(chunk))
+			return realloc_grow(chunk, size);
+		else
+			return chunk2mem(chunk);
+	} else {
+		return realloc_slow(chunk, size);
+	}
+}
+
 void *ft_realloc(void *userptr, size_t size)
 {
 #if TRACES
@@ -941,16 +1037,9 @@ void *ft_realloc(void *userptr, size_t size)
 	if (!lock())
 		return NULL;
 
-	//TODO add sanity checks
-        void *res = malloc_no_lock(size);
-
-        if (res) {
-                if (userptr) {
-                        struct memhdr *hdr = mem2chunk(userptr);
-                        ft_memcpy(res, userptr, size > get_size(hdr) ? get_size(hdr) : size);
-                }
-                free_no_lock(userptr);
-        }
+	assert_correct();
+        void *res = realloc_no_lock(userptr, size);
+	assert_correct();
 
 	unlock();
 
