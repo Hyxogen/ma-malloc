@@ -764,7 +764,7 @@ static void free_common(struct memhdr *chunk)
 
 static bool check_requestsize(size_t n)
 {
-	if (mstate.err | !n)
+	if (mstate.err)
 		return false;
 
 	if (n > PTRDIFF_MAX) {
@@ -811,14 +811,16 @@ static void free_no_lock(void *p)
 		return;
 
 	if (!IS_ALIGNED_TO(p, MALLOC_ALIGN)) {
-		eprint("free(): invalid pointer\n");
+		eprint("free(): %p: invalid pointer\n", p);
+		dump();
 		abort();
 	}
 
 	struct memhdr *chunk = mem2chunk(p);
 
 	if (!is_inuse(chunk) || !check_chunk(chunk)) {
-		eprint("free(): invalid pointer\n");
+		eprint("free(): %p: invalid pointer\n", p);
+		dump();
 		abort();
 	}
 
@@ -867,15 +869,18 @@ void ft_free(void *p)
 #if TRACES
 	ft_dprintf(mstate.dump_fd, "ft_free(tmp_%p);\n", p);
 #endif
+	//glibc requires that free() preserves errno
+	int prev_errno = errno;
 
-	if (!lock())
-		return;
+	if (lock()) {
+		assert_correct();
+		free_no_lock(p);
+		assert_correct();
 
-	assert_correct();
-	free_no_lock(p);
-	assert_correct();
+		unlock();
+	}
+	errno = prev_errno;
 
-	unlock();
 }
 
 void *ft_calloc(size_t nmemb, size_t size)
@@ -883,30 +888,76 @@ void *ft_calloc(size_t nmemb, size_t size)
 #if TRACES
 	ft_dprintf(mstate.dump_fd, "//ft_calloc(%zu, %zu);\n", nmemb, size);
 #endif
-        size_t n = nmemb * size;
+        size_t totalsize = nmemb * size;
 
-        if (nmemb && n / nmemb != size)
+        if (nmemb && ((totalsize / nmemb) != size))
                 return NULL;
 
-        void *res = ft_malloc(n);
+	maybe_initialize();
+
+	if (!check_requestsize(totalsize))
+		return NULL;
+
+	if (!lock())
+		return NULL;
+
+        void *res = malloc_no_lock(totalsize);
 	//TODO huge allocations don't have to be zeroed
-        ft_memset(res, 0, n);
+
+	unlock();
+
+	if (res) {
+		struct memhdr *chunk = mem2chunk(res);
+		ft_memset(res, 0, get_size(chunk));
+	}
+
+#if TRACES
+	ft_dprintf(mstate.dump_fd, "void *tmp_%p = ft_calloc(%zu, %zu);\n", res, nmemb, size);
+#endif
 
         return res;
 }
 
 void *ft_realloc(void *userptr, size_t size)
 {
+#if TRACES
+	ft_dprintf(mstate.dump_fd, "//ft_realloc(tmp_%p, %zu);\n", userptr, size);
+#endif
+	// realloc of null is same as malloc
+	if (!userptr)
+		return ft_malloc(size);
+
+	//glibc
+	if (userptr && !size) {
+		ft_free(userptr);
+		return NULL;
+	}
+
+	maybe_initialize();
+
+	if (!check_requestsize(size))
+		return NULL;
+
+	if (!lock())
+		return NULL;
+
 	//TODO add sanity checks
-        void *res = ft_malloc(size);
+        void *res = malloc_no_lock(size);
+
         if (res) {
                 if (userptr) {
                         struct memhdr *hdr = mem2chunk(userptr);
                         ft_memcpy(res, userptr, size > get_size(hdr) ? get_size(hdr) : size);
                 }
-                ft_free(userptr);
+                free_no_lock(userptr);
         }
 
+	unlock();
+
+#if TRACES
+	ft_dprintf(mstate.dump_fd, "void *tmp_%p = ft_realloc(%s%p, %zu);\n",
+		   res, userptr ? "tmp_" : "(void*)", userptr, size);
+#endif
         return res;
 }
 
@@ -956,6 +1007,10 @@ void *ft_aligned_alloc(size_t align, size_t size)
 
 	maybe_initialize();
 
+#if TRACES
+	ft_dprintf(mstate.dump_fd, "//ft_aligned_alloc(%zu, %zu);\n", align, size);
+#endif
+
 	if (!check_requestsize(size))
 		return NULL;
 
@@ -966,6 +1021,10 @@ void *ft_aligned_alloc(size_t align, size_t size)
 
 	unlock();
 
+#ifdef TRACES
+	ft_dprintf(mstate.dump_fd, "void *tmp_%p = ft_aligned_alloc(%zu, %zu);\n", p, align, size);
+#endif
+
 	ft_assert(!p || IS_ALIGNED_TO(p, align));
 	return p;
 }
@@ -974,6 +1033,9 @@ size_t ft_malloc_usable_size(void *userptr)
 {
         if (!userptr)
                 return 0;
+#if TRACES
+	ft_dprintf(mstate.dump_fd, "//ft_malloc_usable_size(tmp_%p);\n", userptr);
+#endif
 	//TODO add sanity checks
         return get_size(mem2chunk(userptr));
 }
