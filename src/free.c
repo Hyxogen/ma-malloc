@@ -25,12 +25,9 @@ static bool ma_should_unmap(const struct ma_arena *arena, const struct ma_hdr *c
 		return true;
 	if (!ma_is_sentinel(ma_next_hdr(chunk)))
 		return false;
-#if MA_SEGREGATED_BESTFIT
-#error "todo"
-#else
-	if (!arena->tops[0])
+
+	if (!arena->tops[ma_freelist_idx(chunk)])
 		return false;
-#endif
 
 	enum ma_size_class class = ma_get_size_class(chunk);
 

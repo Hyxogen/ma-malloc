@@ -23,14 +23,19 @@ void *ma_realloc(void *p, size_t newsize)
 
 	ma_dump_print("//ma_realloc(tmp_%p, %zu);\n", p, newsize);
 
-	void *newp = ma_malloc(newsize);
+	struct ma_arena *arena = ma_get_current_arena();
+	ma_lock_arena(arena);
+
+	void *newp = ma_malloc_no_lock(arena, newsize);
 	if (newp) {
 		struct ma_hdr *chunk = ma_mem_to_chunk(p);
 		size_t chunk_size = ma_get_size(chunk);
 
 		ft_memcpy(newp, p, chunk_size < newsize ? chunk_size : newsize);
-		ma_free(p);
+		ma_free_no_lock(arena, p);
 	}
+
+	ma_unlock_arena(arena);
 
 	ma_dump_print("void *tmp_%p = ma_realloc(tmp_%p, %zu);\n", newp, p, newsize);
 

@@ -35,6 +35,32 @@ size_t ma_small_binidx(size_t size)
 	return size / MA_SMALLBIN_STEP;
 }
 
+size_t ma_freelist_idx_from_size(size_t size)
+{
+#if MA_SEGREGATED_BESTFIT
+	if (size <= MA_MAX_SMALL_SIZE)
+		return 0;
+	ft_assert(size <= MA_MAX_LARGE_SIZE);
+	return 1;
+#else
+	(void) size;
+	return 0;
+#endif
+}
+
+size_t ma_freelist_idx(const struct ma_hdr *hdr)
+{
+#if MA_SEGREGATED_BESTFIT
+	if (ma_is_small(hdr))
+		return 0;
+	ft_assert(ma_is_large(hdr));
+	return 1;
+#else
+	(void) hdr;
+	return 0;
+#endif
+}
+
 size_t ma_large_binidx(size_t n)
 {
 	ft_assert(n >= MA_MIN_LARGE_SIZE);
@@ -69,8 +95,19 @@ size_t ma_binidx(size_t size)
 bool ma_is_binable(const struct ma_hdr *chunk)
 {
 	size_t size = ma_get_size(chunk);
+#if MA_SEGREGATED_BESTFIT
+	switch (ma_get_size_class(chunk)) {
+	case MA_SMALL:
+		return size >= MA_MIN_SMALL_SIZE && size <= MA_MAX_SMALL_SIZE;
+	case MA_LARGE:
+		return size >= MA_MIN_LARGE_SIZE && size <= MA_MAX_LARGE_SIZE;
+	default:
+		return false;
+	}
+#else
 	//TODO the min check can probably be removed if the logic is correct
 	return size >= MA_MIN_SMALL_SIZE && size <= MA_MAX_LARGE_SIZE;
+#endif
 }
 
 static struct ma_hdr **ma_get_list(struct ma_arena *arena,
@@ -88,7 +125,7 @@ static struct ma_hdr **ma_get_list(struct ma_arena *arena,
 		if (size <= MA_MAX_SMALL_SIZE) {
 			ft_assert(size >= MA_MIN_SMALL_SIZE);
 			size_t bin = ma_small_binidx(size);
-			list = &arena.bins[bin];
+			list = &arena->bins[bin];
 			*selected_bin = bin;
 		} else {
 			list = &arena->tops[0];
@@ -97,7 +134,7 @@ static struct ma_hdr **ma_get_list(struct ma_arena *arena,
 		if (size <= MA_MAX_LARGE_SIZE) {
 			ft_assert(size >= MA_MIN_LARGE_SIZE);
 			size_t bin = ma_large_binidx(size);
-			list = &arena.bins[bin];
+			list = &arena->bins[bin];
 			*selected_bin = bin;
 		} else {
 			list = &arena->tops[1];

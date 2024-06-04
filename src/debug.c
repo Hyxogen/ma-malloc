@@ -42,12 +42,32 @@ void ma_dump(void)
 #if MA_TRACES
 int ma_dump_fd = -1;
 
+char ma_prog_name[512];
+
+static void ma_get_prog_name(void)
+{
+	int fd = open("/proc/self/cmdline", O_RDONLY);
+	if (fd < 0) {
+		ft_perror("open");
+		abort();
+	}
+
+	read(fd, ma_prog_name, sizeof(ma_prog_name));
+
+	close(fd);
+}
+
 void ma_maybe_init_dump(void)
 {
 	if (ma_dump_fd >= 0)
 		return;
 
-	ma_dump_fd = open("dump.txt", O_CREAT | O_TRUNC | O_WRONLY, 0777);
+	ma_get_prog_name();
+
+	char dump_name[512];
+	ft_snprintf(dump_name, sizeof(dump_name), "%s-dump.txt", ma_prog_name);
+
+	ma_dump_fd = open(dump_name, O_CREAT | O_TRUNC | O_WRONLY, 0777);
 	if (ma_dump_fd < 0) {
 		ft_perror("open");
 		abort();

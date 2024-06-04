@@ -14,32 +14,9 @@ static struct ma_hdr *ma_malloc_from_bins(struct ma_arena *arena, size_t n)
 	return chunk;
 }
 
-#if MA_SEGREGATED_BESTFIT
-static size_t ma_freelist_idx_from_size(size_t size)
-{
-	if (size <= MA_MAX_SMALL_SIZE)
-		return 0;
-	ft_assert(size <= MA_MAX_LARGE_SIZE);
-	return 1;
-}
-
-static size_t ma_freelist_idx(const struct ma_hdr *hdr)
-{
-	if (ma_is_small(hdr))
-		return 0;
-	ft_assert(ma_is_large(hdr));
-	return 1;
-}
-#endif
-
 static struct ma_hdr *ma_malloc_from_freelists(struct ma_arena *arena, size_t n)
 {
-#if MA_SEGREGATED_BESTFIT
-	size_t idx = ma_freelist_idx_from_size(n);
-	struct ma_hdr **list = &arena->tops[idx];
-#else
-	struct ma_hdr **list = &arena->tops[0];
-#endif
+	struct ma_hdr **list = &arena->tops[ma_freelist_idx_from_size(n)];
 
 	struct ma_hdr *chunk = ma_find_bestfit(*list, n);
 	if (chunk) {
@@ -78,7 +55,7 @@ static struct ma_hdr *ma_malloc_common(struct ma_arena *arena, size_t n)
 	return chunk;
 }
 
-static void *ma_malloc_no_lock(struct ma_arena *arena, size_t n)
+void *ma_malloc_no_lock(struct ma_arena *arena, size_t n)
 {
 	if (!ma_check_requestsize(n))
 		return NULL;

@@ -161,6 +161,9 @@ void *ma_valloc(size_t size);
 void *ma_pvalloc(size_t size);
 void ma_free(void *p);
 
+void *ma_malloc_no_lock(struct ma_arena *arena, size_t n);
+void ma_free_no_lock(struct ma_arena *arena, void *p);
+
 bool ma_is_inuse(const struct ma_hdr *hdr);
 bool ma_is_pinuse(const struct ma_hdr *chunk);
 size_t ma_get_size(const void *tag);
@@ -215,6 +218,8 @@ void ma_check_user_chunk(const struct ma_hdr *chunk);
 void ma_append_chunk_any(struct ma_arena *arena, struct ma_hdr *chunk);
 void ma_unlink_chunk_any(struct ma_arena *arena, struct ma_hdr *chunk);
 size_t ma_binidx(size_t size);
+size_t ma_freelist_idx_from_size(size_t size);
+size_t ma_freelist_idx(const struct ma_hdr *hdr);
 
 void ma_init_arena(struct ma_arena *arena);
 struct ma_arena *ma_get_current_arena(void);

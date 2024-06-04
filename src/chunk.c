@@ -319,7 +319,7 @@ bool ma_is_user_chunk(const struct ma_hdr *chunk)
 		return size >= MA_MIN_SMALL_SIZE && size < MA_MAX_SMALL_SIZE + MA_MIN_SMALL_SIZE;
 	if (ma_is_large(chunk))
 		return size >= MA_MIN_LARGE_SIZE && size < MA_MAX_LARGE_SIZE + MA_MIN_LARGE_SIZE;
-	return size >= MAX_LARGE_SIZE;
+	return size >= MA_MAX_LARGE_SIZE;
 #else
 	//if we don't use segregated bestfit then we support aligned_alloc,
 	//which might trim the chunk in a way that is not (usually) appropriate
@@ -384,7 +384,6 @@ void ma_dump_all_chunks(const struct ma_hdr *list)
 }
 
 #ifndef FT_NDEBUG
-
 void ma_assert_correct_chunk(const struct ma_hdr *chunk)
 {
 	ft_assert((uintptr_t) chunk & MA_HALF_MALLOC_ALIGN);
@@ -419,7 +418,7 @@ void ma_assert_correct_chunk(const struct ma_hdr *chunk)
 	}
 }
 
-void ma_assert_correct_all_chunks_impl(const struct ma_hdr *list)
+void ma_assert_correct_all_chunks(const struct ma_hdr *list)
 {
 	const struct ma_hdr *cur = list;
 	if (!cur)
