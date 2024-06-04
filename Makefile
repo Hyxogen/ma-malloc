@@ -14,7 +14,7 @@ SRC_FILES	:= $(shell find $(SRC_DIR) -name '*.c')
 OBJ_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC_FILES))
 DEP_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(DEP_DIR)/%.d,$(SRC_FILES))
 
-CFLAGS		:= -Wall -Wextra -O0 -g3 -DMA_TRACES=1 -MMD -Iinclude
+CFLAGS		:= -Wall -Wextra -O3 -g3 -DMA_TRACES=1 -MMD -Iinclude -I$(LIBFT_DIR)/include
 LFLAGS		:= -shared -lpthread
 
 all: $(NAME)
@@ -25,18 +25,21 @@ $(NAME): $(OBJ_FILES) $(LIBFT_LIB)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c Makefile
 	@mkdir -p $(@D)
-	$(CC) -c $< -o $@ $(CFLAGS) -I$(LIBFT_DIR)/include
+	$(CC) -c $< -o $@ $(CFLAGS)
 
-test: CFLAGS += -DUSE_FT_PREFIX=1
 test: $(OBJ_FILES) hammer.cc Makefile
-	$(CXX) hammer.cc -std=c++20 $< $(LIBFT_LIB) -g3 -O3 -Wall -Wextra -o $@
+	$(CXX) hammer.cc -std=c++20 $(OBJ_FILES) $(LIBFT_LIB) -g3 -O3 -Wall -Wextra -o $@ -Iinclude
+
+debug: $(OBJ_FILES)
+	@echo $(OBJ_FILES)
+	$(CC) main.c $(CFLAGS) $(OBJ_FILES) $(LIBFT_LIB) -g3 -O0 -Wall -Wextra -o $@
 
 $(LIBFT_LIB): Makefile
 	@${MAKE} -C $(LIBFT_DIR) san=none
 
 clean:
-	rm -f $(OBJ_FILES)
-	rm -f $(LIBFT_LIB)
+	rm -rf $(OBJ_DIR)
+	rm -rf $(DEP_DIR)
 
 fclean:
 	@${MAKE} clean
@@ -49,4 +52,4 @@ re:
 
 
 -include $(DEP_FILES)
-.PHONY: all clean fclean re
+.PHONY: all clean fclean re debug

@@ -19,7 +19,7 @@ size_t ma_pad_requestsize(size_t size)
 {
 	if (size < MA_MIN_ALLOC_SIZE)
 		size = MA_MIN_ALLOC_SIZE;
-	size = MA_ROUND_UP(size, MA_HALF_MALLOC_ALIGN) | MA_HALF_MALLOC_ALIGN;
+	size = MA_ALIGN_UP(size, MA_HALF_MALLOC_ALIGN) | MA_HALF_MALLOC_ALIGN;
 	ft_assert(size & MA_HALF_MALLOC_ALIGN);
 	return size;
 }

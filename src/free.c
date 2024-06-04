@@ -19,12 +19,19 @@ static struct ma_hdr *ma_maybe_merge(struct ma_arena *arena, struct ma_hdr *chun
 	return chunk;
 }
 
-static bool ma_should_unmap(const struct ma_hdr *chunk)
+static bool ma_should_unmap(const struct ma_arena *arena, const struct ma_hdr *chunk)
 {
 	if (ma_is_huge(chunk))
 		return true;
 	if (!ma_is_sentinel(ma_next_hdr(chunk)))
 		return false;
+#if MA_SEGREGATED_BESTFIT
+#error "todo"
+#else
+	if (!arena->tops[0])
+		return false;
+#endif
+
 	enum ma_size_class class = ma_get_size_class(chunk);
 
 	size_t threshold = ma_get_prealloc_size(class);
@@ -42,7 +49,7 @@ static void ma_free_common(struct ma_arena *arena, struct ma_hdr *chunk)
 
 	chunk = ma_maybe_merge(arena, chunk);
 
-	if (ma_should_unmap(chunk))
+	if (ma_should_unmap(arena, chunk))
 		ma_dealloc_chunk(chunk);
 	else
 		ma_append_chunk_any(arena, chunk);

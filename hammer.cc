@@ -61,9 +61,9 @@ static void gen_malloc()
 {
 	size_t size = gen_malloc_size();
 
-	fprintf(out, "\tvoid *p_%zu = ft_malloc(%zu);\n", nalloc, size);
+	fprintf(out, "\tvoid *p_%zu = ma_malloc(%zu);\n", nalloc, size);
 
-	void *p = ft_malloc(size);
+	void *p = ma_malloc(size);
 
 	assert(p);
 	gen_memset(p, nalloc, size);
@@ -96,9 +96,9 @@ static void gen_realloc()
 	size_t size = gen_malloc_size();
 	auto ptr = pop_random_pointer();
 
-	fprintf(out, "\tvoid *p_%zu = ft_realloc(p_%zu, %zu);\n", nalloc, ptr.second, size);
+	fprintf(out, "\tvoid *p_%zu = ma_realloc(p_%zu, %zu);\n", nalloc, ptr.second, size);
 
-	void *p = ft_realloc(ptr.first, size);
+	void *p = ma_realloc(ptr.first, size);
 	assert(p);
 
 	gen_memset(p, nalloc, size);
@@ -113,8 +113,8 @@ static void gen_free()
 
 	auto ptr = pop_random_pointer();
 
-	fprintf(out, "\tft_free(p_%zu);\n", ptr.second);
-	ft_free(ptr.first);
+	fprintf(out, "\tma_free(p_%zu);\n", ptr.second);
+	ma_free(ptr.first);
 }
 
 static void gen_cmd()

@@ -66,6 +66,13 @@ size_t ma_binidx(size_t size)
 	return ma_large_binidx(size);
 }
 
+bool ma_is_binable(const struct ma_hdr *chunk)
+{
+	size_t size = ma_get_size(chunk);
+	//TODO the min check can probably be removed if the logic is correct
+	return size >= MA_MIN_SMALL_SIZE && size <= MA_MAX_LARGE_SIZE;
+}
+
 static struct ma_hdr **ma_get_list(struct ma_arena *arena,
 				   const struct ma_hdr *chunk,
 				   size_t *selected_bin)
@@ -165,7 +172,7 @@ struct ma_hdr *ma_find_in_bins(struct ma_arena *arena, size_t n,
 
 			bin += 1;
 		} else {
-			bin = MA_ROUND_UP(bin, MA_BINMAPS_PER_ENTRY);
+			bin = MA_ALIGN_UP(bin + 1, MA_BINMAPS_PER_ENTRY);
 		}
 	}
 	return NULL;

@@ -23,7 +23,7 @@ void ma_set_pinuse(struct ma_hdr *chunk, bool v)
 	chunk->tag = ma_set_bit(chunk->tag, MA_PINUSE_FLAG, v);
 }
 
-bool ma_get_pinuse(const struct ma_hdr *chunk)
+bool ma_is_pinuse(const struct ma_hdr *chunk)
 {
 	return chunk->tag & MA_PINUSE_FLAG;
 }
@@ -46,6 +46,11 @@ void ma_set_large(struct ma_hdr *chunk, bool v)
 bool ma_is_large(const struct ma_hdr *chunk)
 {
 	return chunk->tag & MA_LARGE_FLAG;
+}
+
+bool ma_is_huge(const void *chunk)
+{
+	return !ma_is_small(chunk) && !ma_is_large(chunk);
 }
 
 bool ma_is_sentinel(const struct ma_hdr *chunk)
@@ -73,7 +78,7 @@ struct ma_hdr *ma_next_hdr(const void *chunk)
 struct ma_hdr *ma_prev_hdr(const void *chunk)
 {
 	struct ma_hdr *hdr = (struct ma_hdr*) chunk;
-	ft_assert(!ma_get_pinuse(hdr));
+	ft_assert(!ma_is_pinuse(hdr));
 
 	size_t prev_size = ma_get_size((char*) chunk - MA_FOOTER_SIZE);
 	return (struct ma_hdr*)((char *)chunk - prev_size - MA_HEADER_SIZE);
@@ -81,7 +86,7 @@ struct ma_hdr *ma_prev_hdr(const void *chunk)
 
 static size_t *ma_get_ftr(const struct ma_hdr *chunk)
 {
-	return (size_t*) ((char*) ma_get_size(chunk) + MA_HEADER_SIZE - MA_FOOTER_SIZE);
+	return (size_t*) ((char*)chunk + ma_get_size(chunk) + MA_HEADER_SIZE - MA_FOOTER_SIZE);
 }
 
 static void ma_set_ftr(struct ma_hdr *chunk)
@@ -99,6 +104,16 @@ void ma_set_inuse(struct ma_hdr *chunk, bool v)
 	ma_set_pinuse(ma_next_hdr(chunk), v);
 	if (!v)
 		ma_set_ftr(chunk);
+}
+
+void *ma_chunk_to_mem(const struct ma_hdr *chunk)
+{
+	return (char*)chunk + MA_HEADER_SIZE;
+}
+
+struct ma_hdr* ma_mem_to_chunk(const void *p)
+{
+	return (struct ma_hdr*)((char*)p - MA_HEADER_SIZE);
 }
 
 void ma_make_sentinel(struct ma_hdr *chunk, enum ma_size_class class, bool pinuse)
@@ -185,7 +200,7 @@ struct ma_hdr *ma_split_chunk(struct ma_hdr *chunk, size_t newsize)
 	enum ma_size_class class = ma_get_size_class(chunk);
 	struct ma_hdr *next = ma_init_chunk(chunk, class, newsize, true);
 
-	ma_init_chunk(chunk, class, rem - MA_HEADER_SIZE, false);
+	ma_init_chunk(next, class, rem - MA_HEADER_SIZE, false);
 	return next;
 }
 
@@ -215,7 +230,7 @@ void ma_maybe_split(struct ma_arena *arena, struct ma_hdr *chunk, size_t alloc_s
 
 void ma_append_chunk(struct ma_hdr **list, struct ma_hdr *chunk)
 {
-	ft_assert(!ma_inuse(chunk));
+	ft_assert(!ma_is_inuse(chunk));
 
 	if (!*list) {
 		*list = chunk;
@@ -339,7 +354,7 @@ void ma_dump_chunk(const struct ma_hdr *chunk)
 
 	eprint("%p: %p - %p: ", (void*) chunk, (void*) userptr, (void*) ((char*) userptr + size));
 
-	eprint("p=%i s=%i l=%i size=%7zu", ma_get_pinuse(chunk),
+	eprint("p=%i s=%i l=%i size=%7zu", ma_is_pinuse(chunk),
 	       ma_is_small(chunk), ma_is_large(chunk), size);
 
 	if (!inuse && !ma_is_huge(chunk)) {

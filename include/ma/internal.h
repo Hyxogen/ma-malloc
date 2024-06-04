@@ -101,7 +101,6 @@ _Static_assert(MA_HEADER_SIZE == MA_HALF_MALLOC_ALIGN,
 //TODO rename to ma_eprint
 #define eprint(...) ft_dprintf(STDERR_FILENO, __VA_ARGS__)
 
-#define MA_ROUND_UP(x, m) (((x) + (m) - 1) / (m))
 #define MA_ALIGN_UP(x, boundary) (((x) + (boundary) - 1) & ~((boundary) - 1))
 #define MA_ALIGN_DOWN(x, boundary) (((uintptr_t) (x)) & ~((boundary) - 1))
 #define MA_IS_ALIGNED_TO(x, boundary) (((uintptr_t)(x) & ((boundary) - 1)) == 0)
@@ -163,29 +162,14 @@ void *ma_pvalloc(size_t size);
 void ma_free(void *p);
 
 bool ma_is_inuse(const struct ma_hdr *hdr);
-bool ma_is_pinuse(const void *chunk);
+bool ma_is_pinuse(const struct ma_hdr *chunk);
 size_t ma_get_size(const void *tag);
 bool ma_is_small(const struct ma_hdr *chunk);
 bool ma_is_large(const struct ma_hdr *chunk);
-inline bool ma_is_huge(const void *chunk)
-{
-	return !ma_is_small(chunk) && !ma_is_large(chunk);
-}
-inline bool ma_is_binable(const struct ma_hdr *chunk)
-{
-	size_t size = ma_get_size(chunk);
-	//TODO the min check can probably be removed if the logic is correct
-	return size >= MA_MIN_SMALL_SIZE && size <= MA_MAX_LARGE_SIZE;
-}
-inline void *ma_chunk_to_mem(const struct ma_hdr *chunk)
-{
-	return (char*)chunk + MA_HEADER_SIZE;
-}
-
-inline struct ma_hdr* ma_mem_to_chunk(const void *p)
-{
-	return (struct ma_hdr*)((char*)p - MA_HEADER_SIZE);
-}
+bool ma_is_huge(const void *chunk);
+bool ma_is_binable(const struct ma_hdr *chunk);
+void *ma_chunk_to_mem(const struct ma_hdr *chunk);
+struct ma_hdr* ma_mem_to_chunk(const void *p);
 struct ma_hdr *ma_next_hdr(const void *chunk);
 struct ma_hdr *ma_prev_hdr(const void *chunk);
 bool ma_is_sentinel(const struct ma_hdr *chunk);
@@ -217,7 +201,6 @@ struct ma_hdr *ma_init_chunk(struct ma_hdr *chunk, enum ma_size_class class,
 void ma_make_sentinel(struct ma_hdr *chunk, enum ma_size_class class,
 		      bool pinuse);
 void ma_set_inuse(struct ma_hdr *chunk, bool v);
-bool ma_inuse(const struct ma_hdr *hdr);
 void ma_unlink_chunk(struct ma_hdr **list, struct ma_hdr *chunk);
 void ma_append_chunk(struct ma_hdr **list, struct ma_hdr *chunk);
 

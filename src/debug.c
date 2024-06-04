@@ -24,7 +24,7 @@ void ft_assert_impl(int pred, const char *predstr, const char *func, const char 
 	}
 }
 
-char *ft_strerr(int err)
+char *ft_strerror(int err)
 {
 	return strerror(err);
 }
@@ -40,15 +40,15 @@ void ma_dump(void)
 }
 
 #if MA_TRACES
-int dump_fd = -1;
+int ma_dump_fd = -1;
 
 void ma_maybe_init_dump(void)
 {
-	if (dump_fd >= 0)
+	if (ma_dump_fd >= 0)
 		return;
 
-	dump_fd = open("dump.txt", O_CREAT | O_TRUNC | O_WRONLY, 0777);
-	if (dump_fd < 0) {
+	ma_dump_fd = open("dump.txt", O_CREAT | O_TRUNC | O_WRONLY, 0777);
+	if (ma_dump_fd < 0) {
 		ft_perror("open");
 		abort();
 	}
@@ -56,10 +56,10 @@ void ma_maybe_init_dump(void)
 
 __attribute__ ((destructor)) static void ma_close_dump(void)
 {
-	if (dump_fd < 0)
+	if (ma_dump_fd < 0)
 		return;
 
-	if (close(dump_fd))
+	if (close(ma_dump_fd))
 		ft_perror("close");
 }
 
