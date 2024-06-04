@@ -77,8 +77,10 @@ struct ma_hdr *ma_next_hdr(const void *chunk)
 
 struct ma_hdr *ma_prev_hdr(const void *chunk)
 {
+#ifndef FT_NDEBUG
 	struct ma_hdr *hdr = (struct ma_hdr*) chunk;
 	ft_assert(!ma_is_pinuse(hdr));
+#endif
 
 	size_t prev_size = ma_get_size((char*) chunk - MA_FOOTER_SIZE);
 	return (struct ma_hdr*)((char *)chunk - prev_size - MA_HEADER_SIZE);
@@ -381,6 +383,8 @@ void ma_dump_all_chunks(const struct ma_hdr *list)
 	}
 }
 
+#ifndef FT_NDEBUG
+
 void ma_assert_correct_chunk(const struct ma_hdr *chunk)
 {
 	ft_assert((uintptr_t) chunk & MA_HALF_MALLOC_ALIGN);
@@ -415,7 +419,7 @@ void ma_assert_correct_chunk(const struct ma_hdr *chunk)
 	}
 }
 
-void ma_assert_correct_all_chunks(const struct ma_hdr *list)
+void ma_assert_correct_all_chunks_impl(const struct ma_hdr *list)
 {
 	const struct ma_hdr *cur = list;
 	if (!cur)
@@ -429,3 +433,4 @@ void ma_assert_correct_all_chunks(const struct ma_hdr *list)
 		cur = ma_next_hdr(cur);
 	}
 }
+#endif

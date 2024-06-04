@@ -14,14 +14,14 @@ SRC_FILES	:= $(shell find $(SRC_DIR) -name '*.c')
 OBJ_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC_FILES))
 DEP_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(DEP_DIR)/%.d,$(SRC_FILES))
 
-CFLAGS		:= -Wall -Wextra -O3 -g3 -DMA_TRACES=1 -MMD -Iinclude -I$(LIBFT_DIR)/include
+CFLAGS		:= -Wall -Wextra -O3 -g3 -DMA_TRACES=0 -MMD -Iinclude -I$(LIBFT_DIR)/include -DMA_COMPILE_AS_LIBC=1 -fPIC -DFT_NDEBUG
 LFLAGS		:= -shared -lpthread
 
 all: $(NAME)
 
 $(NAME): $(OBJ_FILES) $(LIBFT_LIB)
 	@echo $(SRC_FILES)
-	$(CC) $< $(LIBFT_LIB) $(LFLAGS) -o $@
+	$(CC) $(OBJ_FILES) $(LIBFT_LIB) $(LFLAGS) -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c Makefile
 	@mkdir -p $(@D)

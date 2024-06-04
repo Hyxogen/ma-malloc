@@ -224,8 +224,13 @@ void ma_dump_all_chunks(const struct ma_hdr *list);
 void ma_dump_arena(const struct ma_arena *arena);
 void ma_dump(void);
 
+#ifdef FT_NDEBUG
+#define ma_assert_correct_all_chunks(...)
+#define ma_assert_correct_arena(...)
+#else
 void ma_assert_correct_all_chunks(const struct ma_hdr *list);
 void ma_assert_correct_arena(const struct ma_arena *arena);
+#endif
 
 void ft_abort(void);
 void ft_assert_impl(int pred, const char *predstr, const char *func, const char *file, int line);

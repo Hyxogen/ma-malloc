@@ -206,6 +206,8 @@ void ma_dump_arena(const struct ma_arena *arena)
 	ma_dump_all_chunks(arena->debug[1]);
 }
 
+#ifndef FT_NDEBUG
+
 void ma_assert_correct_bin(const struct ma_hdr *list, size_t min, size_t max)
 {
 	const struct ma_hdr *cur = list;
@@ -241,3 +243,4 @@ void ma_assert_correct_arena(const struct ma_arena *arena)
 		size += MA_SMALLBIN_STEP;
 	}
 }
+#endif
