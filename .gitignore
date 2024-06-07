@@ -13,3 +13,7 @@
 *.txt
 /hello.c
 /main.c
+/stress
+/debug
+/tags
+/.gdbinit

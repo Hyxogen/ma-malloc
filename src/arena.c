@@ -274,10 +274,27 @@ void ma_assert_correct_arena(const struct ma_arena *arena)
 	ma_assert_correct_all_chunks(arena->debug[1]);
 
 	size_t size = MA_MIN_SMALL_SIZE;
+	size_t bin;
 
-	for (int i = 0; i < MA_SMALLBIN_COUNT; ++i) {
-		ma_assert_correct_bin(arena->bins[i], size, size);
+	for (bin = 0; bin < MA_SMALLBIN_COUNT; ++bin) {
+		ma_assert_correct_bin(arena->bins[bin], size, size);
 		size += MA_SMALLBIN_STEP;
+	}
+
+	size_t min_size = MA_MIN_LARGE_SIZE;
+	size_t max_size;
+	size_t count = 32;
+	size = 64;
+
+	while (count >= 2) {
+		for (size_t i = 0; i < count; ++i) {
+			max_size = min_size + size;
+			ma_assert_correct_bin(arena->bins[bin + i], min_size, max_size);
+			min_size = max_size;
+		}
+		bin += count;
+		count /= 2;
+		size *= 8;
 	}
 }
 #endif

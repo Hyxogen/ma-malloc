@@ -2,6 +2,7 @@ extern "C" {
 #include "malloc.h"
 #include <unistd.h>
 #include <sys/wait.h>
+#include <signal.h>
 }
 
 #include <cstdlib>
@@ -14,6 +15,7 @@ extern "C" {
 #include <unordered_map>
 #include <iterator>
 #include <iostream>
+#include <optional>
 
 static std::random_device rd;
 static std::mt19937 gen(rd());
@@ -134,17 +136,31 @@ static void gen_cmd()
 	}
 }
 
-static void start_hammer()
+static void sighandler(int signum)
 {
-	static std::uniform_int_distribution<> count_distr(10, 10480); 
+	if (signum != SIGALRM)
+		abort();
+	_exit(0);
+}
+
+static void start_hammer(std::optional<unsigned> timeout)
+{
+	if (timeout) {
+		struct sigaction action = {
+			.sa_handler = sighandler,
+		};
+
+		assert(!sigemptyset(&action.sa_mask));
+		assert(!sigaction(SIGALRM, &action, NULL));
+		alarm(*timeout);
+	}
 
 	fprintf(out, "#include \"malloc.h\"\n\n");
 	fprintf(out, "#include <string.h>\n\n");
 	fprintf(out, "int main(void)\n{\n");
 
-	int count = count_distr(gen);
 
-	for (int i = 0; i < count; ++i) {
+	while (true) {
 		gen_cmd();
 	}
 }
@@ -158,15 +174,19 @@ static void dump()
 	dump_file(dump, out);
 }
 
-int main()
+int main(int argc, char **argv)
 {
 	out = tmpfile();
 	setbuf(out, NULL);
 
+	std::optional<unsigned> timeout;
+	if (argc > 1) {
+		timeout = std::atol(argv[1]);
+	}
 
 	pid_t p = fork();
 	if (p == 0) {
-		start_hammer();
+		start_hammer(timeout);
 		return 0;
 	} else if (p < 0) {
 		perror("fork");
