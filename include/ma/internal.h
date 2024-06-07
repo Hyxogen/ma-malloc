@@ -168,6 +168,7 @@ void ma_free_no_lock(struct ma_arena *arena, void *p);
 
 bool ma_is_inuse(const struct ma_hdr *hdr);
 bool ma_is_pinuse(const struct ma_hdr *chunk);
+void ma_set_size(struct ma_hdr *chunk, size_t newsize);
 size_t ma_get_size(const void *tag);
 bool ma_is_small(const struct ma_hdr *chunk);
 bool ma_is_large(const struct ma_hdr *chunk);
@@ -206,6 +207,7 @@ struct ma_hdr *ma_init_chunk(struct ma_hdr *chunk, enum ma_size_class class,
 void ma_make_sentinel(struct ma_hdr *chunk, enum ma_size_class class,
 		      bool pinuse);
 void ma_set_inuse(struct ma_hdr *chunk, bool v);
+void ma_set_pinuse(struct ma_hdr *chunk, bool v);
 void ma_unlink_chunk(struct ma_hdr **list, struct ma_hdr *chunk);
 void ma_append_chunk(struct ma_hdr **list, struct ma_hdr *chunk);
 

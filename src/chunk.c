@@ -98,6 +98,7 @@ static void ma_set_ftr(struct ma_hdr *chunk)
 
 bool ma_is_inuse(const struct ma_hdr *hdr)
 {
+	ft_assert(!ma_is_sentinel(hdr));
 	return ma_is_pinuse(ma_next_hdr(hdr));
 }
 
