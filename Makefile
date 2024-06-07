@@ -14,7 +14,7 @@ SRC_FILES	:= $(shell find $(SRC_DIR) -name '*.c')
 OBJ_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC_FILES))
 DEP_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(DEP_DIR)/%.d,$(SRC_FILES))
 
-CFLAGS		:= -Wall -Wextra -O2 -g3 -DMA_TRACES=0 -MMD -Iinclude -I$(LIBFT_DIR)/include -DMA_COMPILE_AS_LIBC=1 -fPIC -DMA_SEGREGATED_BESTFIT=0 -DFT_NDEBUG	
+CFLAGS		:= -Wall -Wextra -O2 -g3 -DMA_TRACES=0 -MMD -Iinclude -I$(LIBFT_DIR)/include -DMA_COMPILE_AS_LIBC=0 -fPIC -DMA_SEGREGATED_BESTFIT=1
 LFLAGS		:= -shared -lpthread
 
 all: $(NAME)
