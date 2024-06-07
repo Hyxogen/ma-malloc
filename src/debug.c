@@ -1,20 +1,18 @@
 #include "ma/internal.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 #if MA_TRACES
 #include <fcntl.h>
 #endif
 
 // TODO implement in libft
-void ft_abort(void)
-{
-	abort();
-}
+void ft_abort(void) { abort(); }
 
-void ft_assert_impl(int pred, const char *predstr, const char *func, const char *file, int line)
+void ft_assert_impl(int pred, const char *predstr, const char *func,
+		    const char *file, int line)
 {
 	if (!pred) {
 		eprint("%s:%i: %s: Assertion '%s' failed.\n", file, line, func,
@@ -24,20 +22,11 @@ void ft_assert_impl(int pred, const char *predstr, const char *func, const char 
 	}
 }
 
-char *ft_strerror(int err)
-{
-	return strerror(err);
-}
+char *ft_strerror(int err) { return strerror(err); }
 
-void ft_perror(const char *s)
-{
-	perror(s);
-}
+void ft_perror(const char *s) { perror(s); }
 
-void ma_dump(void)
-{
-	ma_dump_arena(ma_get_current_arena());
-}
+void ma_dump(void) { ma_dump_arena(ma_get_current_arena()); }
 
 #if MA_TRACES
 int ma_dump_fd = -1;
@@ -74,7 +63,7 @@ void ma_maybe_init_dump(void)
 	}
 }
 
-__attribute__ ((destructor)) static void ma_close_dump(void)
+__attribute__((destructor)) static void ma_close_dump(void)
 {
 	if (ma_dump_fd < 0)
 		return;

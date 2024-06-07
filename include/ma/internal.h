@@ -6,8 +6,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <unistd.h>
 #include <ft/stdio.h>
+#include <unistd.h>
 
 #include <pthread.h>
 
@@ -36,9 +36,9 @@
 #define MA_TRACES 0
 #endif
 
-#define MA_PINUSE_FLAG ((size_t) 0b001)
-#define MA_SMALL_FLAG ((size_t) 0b010)
-#define MA_LARGE_FLAG ((size_t) 0b100)
+#define MA_PINUSE_FLAG ((size_t)0b001)
+#define MA_SMALL_FLAG ((size_t)0b010)
+#define MA_LARGE_FLAG ((size_t)0b100)
 #define MA_FLAGS_MASK (MA_PINUSE_FLAG | MA_LARGE_FLAG | MA_SMALL_FLAG)
 #define MA_SIZE_MASK (~MA_FLAGS_MASK)
 
@@ -59,7 +59,7 @@
 
 #define MA_MIN_SMALL_SIZE (MA_MIN_ALLOC_SIZE)
 #define MA_MAX_SMALL_SIZE                                                      \
-	((MA_MIN_SMALL_SIZE + MA_SMALLBIN_STEP * (MA_SMALLBIN_COUNT - 1)) -         \
+	((MA_MIN_SMALL_SIZE + MA_SMALLBIN_STEP * (MA_SMALLBIN_COUNT - 1)) -    \
 	 MA_HEADER_SIZE)
 
 #define MA_MIN_LARGE_SIZE (MA_MAX_SMALL_SIZE + MA_HEADER_SIZE)
@@ -98,14 +98,14 @@ _Static_assert(MA_HEADER_SIZE == MA_HALF_MALLOC_ALIGN,
 	ft_assert_impl(!(!(pred)), #pred, __FUNCTION__, __FILE__, __LINE__)
 #endif
 
-//TODO rename to ma_eprint
+// TODO rename to ma_eprint
 #define eprint(...) ft_dprintf(STDERR_FILENO, __VA_ARGS__)
 
-#define MA_ALIGN_UP(x, boundary) (((x) + (boundary) - 1) & ~((boundary) - 1))
-#define MA_ALIGN_DOWN(x, boundary) (((uintptr_t) (x)) & ~((boundary) - 1))
-#define MA_IS_ALIGNED_TO(x, boundary) (((uintptr_t)(x) & ((boundary) - 1)) == 0)
+#define MA_ALIGN_UP(x, boundary) (((x) + (boundary)-1) & ~((boundary)-1))
+#define MA_ALIGN_DOWN(x, boundary) (((uintptr_t)(x)) & ~((boundary)-1))
+#define MA_IS_ALIGNED_TO(x, boundary) (((uintptr_t)(x) & ((boundary)-1)) == 0)
 #define MA_IS_MULTIPLE_OF(x, m) ((((x) / (m)) * (m)) == (x))
-#define MA_IS_POWER_OF_TWO_OR_ZERO(x) (((x) & ((x) - 1)) == 0)
+#define MA_IS_POWER_OF_TWO_OR_ZERO(x) (((x) & ((x)-1)) == 0)
 
 #if MA_TRACES
 extern int ma_dump_fd;
@@ -175,7 +175,7 @@ bool ma_is_large(const struct ma_hdr *chunk);
 bool ma_is_huge(const void *chunk);
 bool ma_is_binable(const struct ma_hdr *chunk);
 void *ma_chunk_to_mem(const struct ma_hdr *chunk);
-struct ma_hdr* ma_mem_to_chunk(const void *p);
+struct ma_hdr *ma_mem_to_chunk(const void *p);
 struct ma_hdr *ma_next_hdr(const void *chunk);
 struct ma_hdr *ma_prev_hdr(const void *chunk);
 bool ma_is_sentinel(const struct ma_hdr *chunk);
@@ -211,7 +211,8 @@ void ma_set_pinuse(struct ma_hdr *chunk, bool v);
 void ma_unlink_chunk(struct ma_hdr **list, struct ma_hdr *chunk);
 void ma_append_chunk(struct ma_hdr **list, struct ma_hdr *chunk);
 
-struct ma_hdr *ma_alloc_chunk(struct ma_arena *arena, size_t minsize, enum ma_size_class class);
+struct ma_hdr *ma_alloc_chunk(struct ma_arena *arena, size_t minsize,
+			      enum ma_size_class class);
 void ma_dealloc_chunk(struct ma_hdr *chunk);
 
 struct ma_hdr *ma_find_in_bins(struct ma_arena *arena, size_t n,
@@ -242,7 +243,8 @@ void ma_assert_correct_arena(const struct ma_arena *arena);
 #endif
 
 void ft_abort(void);
-void ft_assert_impl(int pred, const char *predstr, const char *func, const char *file, int line);
+void ft_assert_impl(int pred, const char *predstr, const char *func,
+		    const char *file, int line);
 char *ft_strerror(int err);
 void ft_perror(const char *s);
 

@@ -37,6 +37,9 @@ debug: $(OBJ_FILES)
 $(LIBFT_LIB): Makefile
 	@${MAKE} -C $(LIBFT_DIR) san=none
 
+fmt:
+	clang-format -i $(SRC_FILES) $(shell find include/ -type f -name '*.h')
+
 clean:
 	rm -rf $(OBJ_DIR)
 	rm -rf $(DEP_DIR)

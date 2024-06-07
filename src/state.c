@@ -6,14 +6,11 @@
 
 static struct ma_state state;
 
-struct ma_arena *ma_get_current_arena(void)
-{
-	return &state.main_arena;
-}
+struct ma_arena *ma_get_current_arena(void) { return &state.main_arena; }
 
 struct ma_arena *ma_get_arena(const void *p)
 {
-	(void) p;
+	(void)p;
 	return &state.main_arena;
 }
 

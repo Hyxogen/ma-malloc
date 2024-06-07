@@ -43,7 +43,7 @@ size_t ma_freelist_idx_from_size(size_t size)
 	ft_assert(size <= MA_MAX_LARGE_SIZE);
 	return 1;
 #else
-	(void) size;
+	(void)size;
 	return 0;
 #endif
 }
@@ -56,7 +56,7 @@ size_t ma_freelist_idx(const struct ma_hdr *hdr)
 	ft_assert(ma_is_large(hdr));
 	return 1;
 #else
-	(void) hdr;
+	(void)hdr;
 	return 0;
 #endif
 }
@@ -66,7 +66,7 @@ size_t ma_large_binidx(size_t n)
 	ft_assert(n >= MA_MIN_LARGE_SIZE);
 	n -= MA_MIN_LARGE_SIZE;
 
-	//TODO use macros for the magic values
+	// TODO use macros for the magic values
 	size_t count = 32;
 	size_t size = 64;
 	size_t offset = MA_SMALLBIN_COUNT;
@@ -105,7 +105,7 @@ bool ma_is_binable(const struct ma_hdr *chunk)
 		return false;
 	}
 #else
-	//TODO the min check can probably be removed if the logic is correct
+	// TODO the min check can probably be removed if the logic is correct
 	return size >= MA_MIN_SMALL_SIZE && size <= MA_MAX_LARGE_SIZE;
 #endif
 }
@@ -231,7 +231,7 @@ void ma_unlink_chunk_any(struct ma_arena *arena, struct ma_hdr *chunk)
 {
 	size_t tmp;
 	struct ma_hdr **list = ma_get_list(arena, chunk, &tmp);
-	
+
 	ma_unlink_chunk(list, chunk);
 }
 

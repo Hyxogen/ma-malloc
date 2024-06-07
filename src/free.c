@@ -2,7 +2,8 @@
 
 #include <errno.h>
 
-static struct ma_hdr *ma_maybe_merge(struct ma_arena *arena, struct ma_hdr *chunk)
+static struct ma_hdr *ma_maybe_merge(struct ma_arena *arena,
+				     struct ma_hdr *chunk)
 {
 	if (!ma_is_pinuse(chunk)) {
 		struct ma_hdr *prev = ma_prev_hdr(chunk);
@@ -19,7 +20,8 @@ static struct ma_hdr *ma_maybe_merge(struct ma_arena *arena, struct ma_hdr *chun
 	return chunk;
 }
 
-static bool ma_should_unmap(const struct ma_arena *arena, const struct ma_hdr *chunk)
+static bool ma_should_unmap(const struct ma_arena *arena,
+			    const struct ma_hdr *chunk)
 {
 	if (ma_is_huge(chunk))
 		return true;
@@ -70,7 +72,7 @@ void ma_free_no_lock(struct ma_arena *arena, void *p)
 void ma_free(void *p)
 {
 #if MA_GLIBC_COMPATIBLE
-	//glibc requires that free() preserves errno
+	// glibc requires that free() preserves errno
 	int prev_errno = errno;
 #endif
 	if (!p)
