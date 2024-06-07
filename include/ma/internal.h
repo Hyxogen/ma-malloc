@@ -59,7 +59,7 @@
 
 #define MA_MIN_SMALL_SIZE (MA_MIN_ALLOC_SIZE)
 #define MA_MAX_SMALL_SIZE                                                      \
-	((MA_MIN_SMALL_SIZE + MA_SMALLBIN_STEP * (MA_BIN_COUNT - 1)) -         \
+	((MA_MIN_SMALL_SIZE + MA_SMALLBIN_STEP * (MA_SMALLBIN_COUNT - 1)) -         \
 	 MA_HEADER_SIZE)
 
 #define MA_MIN_LARGE_SIZE (MA_MAX_SMALL_SIZE + MA_HEADER_SIZE)

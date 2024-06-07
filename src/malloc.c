@@ -76,6 +76,10 @@ void *ma_malloc_no_lock(struct ma_arena *arena, size_t n)
 
 void *ma_malloc(size_t n)
 {
+	/*eprint("MIN_SMALL_SIZE=%zu MAX_SMALL_SIZE=%zu MIN_LARGE_SIZE=%zu "
+	       "MAX_LARGE_SIZE=%zu\n",
+	       MA_MIN_SMALL_SIZE, MA_MAX_SMALL_SIZE, MA_MIN_LARGE_SIZE,
+	       MA_MAX_LARGE_SIZE);*/
 	ma_dump_print("//ma_malloc(%zu);\n", n);
 
 	ma_maybe_initialize();

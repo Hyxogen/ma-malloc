@@ -30,7 +30,7 @@ static void *ma_realloc_shrink(struct ma_arena *arena, struct ma_hdr *old_chunk,
 
 	size_t rem = old_size - new_size;
 
-	if (rem >= MA_MIN_CHUNK_SIZE) {
+	if (rem >= MA_MIN_CHUNK_SIZE && (!MA_SEGREGATED_BESTFIT || ma_should_split(old_chunk, new_size))) {
 		ma_set_size(old_chunk, new_size);
 
 		struct ma_hdr *next = ma_next_hdr(old_chunk);
@@ -56,10 +56,15 @@ static void *ma_realloc_grow(struct ma_arena *arena, struct ma_hdr *old_chunk,
 	ft_assert(old_size <= new_size);
 
 	size_t needed = ma_pad_requestsize(new_size - old_size);
+	enum ma_size_class chunk_class = ma_get_size_class(old_chunk);
 
 	struct ma_hdr *next = ma_next_hdr(old_chunk);
+	//Wow this is ugly, TODO make it prettier
 	if (ma_is_sentinel(next) || ma_is_inuse(next) ||
-	    ma_get_size(next) + MA_HEADER_SIZE < needed)
+	    ma_get_size(next) + MA_HEADER_SIZE < needed ||
+	    (MA_SEGREGATED_BESTFIT && !ma_should_split(next, needed) &&
+	     chunk_class !=
+		 ma_get_size_class_from_size(old_size + ma_get_size(next))))
 		return ma_realloc_slow(arena, old_chunk, new_size);
 
 	ma_unlink_chunk_any(arena, next);
