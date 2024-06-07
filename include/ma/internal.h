@@ -105,6 +105,7 @@ _Static_assert(MA_HEADER_SIZE == MA_HALF_MALLOC_ALIGN,
 #define MA_ALIGN_DOWN(x, boundary) (((uintptr_t) (x)) & ~((boundary) - 1))
 #define MA_IS_ALIGNED_TO(x, boundary) (((uintptr_t)(x) & ((boundary) - 1)) == 0)
 #define MA_IS_MULTIPLE_OF(x, m) ((((x) / (m)) * (m)) == (x))
+#define MA_IS_POWER_OF_TWO_OR_ZERO(x) (((x) & ((x) - 1)) == 0)
 
 #if MA_TRACES
 extern int ma_dump_fd;
@@ -157,6 +158,7 @@ void *ma_realloc(void *p, size_t newsize);
 size_t ma_malloc_usable_size(void *p);
 void *ma_aligned_alloc(size_t align, size_t n);
 void *ma_memalign(size_t align, size_t size);
+int ma_posix_memalign(void **memptr, size_t align, size_t size);
 void *ma_valloc(size_t size);
 void *ma_pvalloc(size_t size);
 void ma_free(void *p);

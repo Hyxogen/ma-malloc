@@ -15,5 +15,6 @@ size_t malloc_usable_size(void *p) { return ma_malloc_usable_size(p); };
 void *memalign(size_t align, size_t size) { return ma_memalign(align, size); }
 void *valloc(size_t size) { return ma_valloc(size); }
 void *pvalloc(size_t size) { return ma_pvalloc(size); }
+int posix_memalign(void **memptr, size_t align, size_t size) { return ma_posix_memalign(memptr, align, size); }
 
 #endif
