@@ -49,7 +49,7 @@ static void ma_free_common(struct ma_arena *arena, struct ma_hdr *chunk)
 	chunk = ma_maybe_merge(arena, chunk);
 
 	if (ma_should_unmap(arena, chunk))
-		ma_dealloc_chunk(chunk);
+		ma_dealloc_chunk(arena, chunk);
 	else
 		ma_append_chunk_any(arena, chunk);
 }

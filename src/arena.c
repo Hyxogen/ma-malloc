@@ -237,10 +237,7 @@ void ma_unlink_chunk_any(struct ma_arena *arena, struct ma_hdr *chunk)
 
 void ma_dump_arena(const struct ma_arena *arena)
 {
-	eprint("SMALL:\n");
-	ma_dump_all_chunks(arena->debug[0]);
-	eprint("LARGE:\n");
-	ma_dump_all_chunks(arena->debug[1]);
+	ma_debug_for_each(arena->debug, ma_dump_all_chunks);
 }
 
 #ifndef FT_NDEBUG
@@ -270,8 +267,7 @@ void ma_assert_correct_bin(const struct ma_hdr *list, size_t min, size_t max)
 
 void ma_assert_correct_arena(const struct ma_arena *arena)
 {
-	ma_assert_correct_all_chunks(arena->debug[0]);
-	ma_assert_correct_all_chunks(arena->debug[1]);
+	ma_debug_for_each(arena->debug, ma_assert_correct_all_chunks);
 
 	size_t size = MA_MIN_SMALL_SIZE;
 	size_t bin;

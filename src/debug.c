@@ -28,6 +28,70 @@ void ft_perror(const char *s) { perror(s); }
 
 void ma_dump(void) { ma_dump_arena(ma_get_current_arena()); }
 
+#if MA_TRACK_CHUNKS
+void ma_debug_add_chunk(struct ma_debug **list, const struct ma_hdr *chunk)
+{
+	struct ma_debug *cur = *list;
+
+	while (cur) {
+		for (size_t i = 0; i < sizeof(cur->_entries)/sizeof(cur->_entries[0]); ++i) {
+			if (!cur->_entries[i]) {
+				cur->_entries[i] = chunk;
+				return;
+			}
+		}
+
+		if (cur->_next)
+			cur = cur->_next;
+		else
+			break;
+	}
+
+	struct ma_debug *new = ma_sysalloc(sizeof(*new));
+	if (new == MA_SYSALLOC_FAILED) {
+		eprint("ma_sysalloc: failed to allocate memory for debug tracking\n");
+		return;
+	}
+
+	if (*list) {
+		cur->_next = new;
+		new->_prev = cur;
+	} else {
+		*list = new;
+	}
+
+	new->_entries[0] = chunk;
+}
+
+void ma_debug_rem_chunk(struct ma_debug **list, const struct ma_hdr *chunk)
+{
+	struct ma_debug *cur = *list;
+
+	while (cur) {
+		for (size_t i = 0; i < sizeof(cur->_entries)/sizeof(cur->_entries[0]); ++i) {
+			if (cur->_entries[i] == chunk) {
+				cur->_entries[i] = NULL;
+				return;
+			}
+		}
+		cur = cur->_next;
+	}
+}
+
+void ma_debug_for_each(const struct ma_debug *list, void (*f)(const struct ma_hdr *))
+{
+	const struct ma_debug *cur = list;
+
+	while (cur) {
+		for (size_t i = 0; i < sizeof(cur->_entries)/sizeof(cur->_entries[0]); ++i) {
+			if (cur->_entries[i])
+				f(cur->_entries[i]);
+		}
+		cur = cur->_next;
+	}
+}
+#endif
+
 #if MA_TRACES
 int ma_dump_fd = -1;
 

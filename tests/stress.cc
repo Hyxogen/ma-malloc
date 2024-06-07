@@ -17,12 +17,23 @@ extern "C" {
 #include <iostream>
 #include <optional>
 
+#ifndef MA_DUMP
+#define MA_DUMP 0
+#endif
+
 static std::random_device rd;
 static std::mt19937 gen(rd());
 static std::unordered_map<void*, size_t> live;
 static size_t nalloc = 0;
 static FILE *out;
 constexpr unsigned char fill_byte = 0xbe;
+
+template <class... Args>
+static void dump_print(const char *fmt, Args... args) {
+#if MA_DUMP
+	fprintf(out, fmt, args...);
+#endif
+}
 
 static void dump_file(FILE *dest, FILE *file)
 {
@@ -55,7 +66,7 @@ static size_t gen_malloc_size()
 
 static void gen_memset(void* p, size_t idx, size_t n)
 {
-	fprintf(out, "\tmemset(p_%zu, %hhu, %zu);\n", idx, fill_byte, n);
+	dump_print("\tmemset(p_%zu, %hhu, %zu);\n", idx, fill_byte, n);
 	memset(p, fill_byte, n);
 }
 
@@ -63,7 +74,7 @@ static void gen_malloc()
 {
 	size_t size = gen_malloc_size();
 
-	fprintf(out, "\tvoid *p_%zu = ma_malloc(%zu);\n", nalloc, size);
+	dump_print("\tvoid *p_%zu = ma_malloc(%zu);\n", nalloc, size);
 
 	void *p = ma_malloc(size);
 
@@ -98,7 +109,7 @@ static void gen_realloc()
 	size_t size = gen_malloc_size();
 	auto ptr = pop_random_pointer();
 
-	fprintf(out, "\tvoid *p_%zu = ma_realloc(p_%zu, %zu);\n", nalloc, ptr.second, size);
+	dump_print("\tvoid *p_%zu = ma_realloc(p_%zu, %zu);\n", nalloc, ptr.second, size);
 
 	void *p = ma_realloc(ptr.first, size);
 	assert(p);
@@ -115,7 +126,7 @@ static void gen_free()
 
 	auto ptr = pop_random_pointer();
 
-	fprintf(out, "\tma_free(p_%zu);\n", ptr.second);
+	dump_print("\tma_free(p_%zu);\n", ptr.second);
 	ma_free(ptr.first);
 }
 
@@ -155,9 +166,9 @@ static void start_hammer(std::optional<unsigned> timeout)
 		alarm(*timeout);
 	}
 
-	fprintf(out, "#include \"malloc.h\"\n\n");
-	fprintf(out, "#include <string.h>\n\n");
-	fprintf(out, "int main(void)\n{\n");
+	dump_print("#include \"malloc.h\"\n\n");
+	dump_print("#include <string.h>\n\n");
+	dump_print("int main(void)\n{\n");
 
 
 	while (true) {
@@ -165,6 +176,7 @@ static void start_hammer(std::optional<unsigned> timeout)
 	}
 }
 
+#if MA_DUMP
 static void dump()
 {
 	rewind(out);
@@ -173,11 +185,21 @@ static void dump()
 	assert(dump);
 	dump_file(dump, out);
 }
+#endif
 
 int main(int argc, char **argv)
 {
+#if MA_DUMP
 	out = tmpfile();
 	setbuf(out, NULL);
+#endif
+
+	unsigned int seed = rd();
+
+	if (std::getenv("MA_SEED"))
+		seed = std::strtoul(std::getenv("MA_SEED"), NULL, 10);
+
+	gen.seed(seed);
 
 	std::optional<unsigned> timeout;
 	if (argc > 1) {
@@ -199,19 +221,19 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	fprintf(out, "}\n");
+	dump_print("}\n");
 
 	if (WIFSIGNALED(status)) {
 		std::cout << "KO: received a signal" << std::endl;
-		dump();
+		std::cout << "seed: " << seed << std::endl;
 		return 1;
 	} else if (!WIFEXITED(status)) {
 		std::cout << "KO: did not exit properly" << std::endl;
-		dump();
+		std::cout << "seed: " << seed << std::endl;
 		return 1;
 	} else if (WEXITSTATUS(status) != 0) {
 		std::cout << "KO: program did not return 0" << std::endl;
-		dump();
+		std::cout << "seed: " << seed << std::endl;
 		return 1;
 	}
 	return 0;

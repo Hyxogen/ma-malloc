@@ -36,6 +36,10 @@
 #define MA_TRACES 0
 #endif
 
+#ifndef MA_TRACK_CHUNKS
+#define MA_TRACK_CHUNKS 0
+#endif
+
 #define MA_PINUSE_FLAG ((size_t)0b001)
 #define MA_SMALL_FLAG ((size_t)0b010)
 #define MA_LARGE_FLAG ((size_t)0b100)
@@ -140,7 +144,7 @@ struct ma_arena {
 	struct ma_hdr *bins[MA_BIN_COUNT];
 	uint64_t bin_maps[2];
 
-	struct ma_hdr *debug[2];
+	struct ma_debug *debug;
 
 	pthread_mutex_t mtx;
 };
@@ -150,6 +154,13 @@ _Static_assert(MA_BIN_COUNT <= sizeof(uint64_t) * 2 * CHAR_BIT,
 struct ma_state {
 	struct ma_arena main_arena;
 	bool initialized;
+};
+
+struct ma_debug {
+	size_t _num_entries;
+	struct ma_debug *_next;
+	struct ma_debug *_prev;
+	const struct ma_hdr *_entries[128];
 };
 
 void *ma_malloc(size_t n);
@@ -213,7 +224,7 @@ void ma_append_chunk(struct ma_hdr **list, struct ma_hdr *chunk);
 
 struct ma_hdr *ma_alloc_chunk(struct ma_arena *arena, size_t minsize,
 			      enum ma_size_class class);
-void ma_dealloc_chunk(struct ma_hdr *chunk);
+void ma_dealloc_chunk(struct ma_arena *arena, struct ma_hdr *chunk);
 
 struct ma_hdr *ma_find_in_bins(struct ma_arena *arena, size_t n,
 			       struct ma_hdr ***from);
@@ -235,8 +246,8 @@ void ma_dump_arena(const struct ma_arena *arena);
 void ma_dump(void);
 
 #ifdef FT_NDEBUG
-#define ma_assert_correct_all_chunks(...)
-#define ma_assert_correct_arena(...)
+inline void ma_assert_correct_all_chunks(const struct ma_hdr *list) { (void) list; }
+inline void ma_assert_correct_arena(const struct ma_arena *arena) { (void) arena; }
 #else
 void ma_assert_correct_all_chunks(const struct ma_hdr *list);
 void ma_assert_correct_arena(const struct ma_arena *arena);
@@ -251,4 +262,27 @@ void ft_perror(const char *s);
 int ma_sysalloc_granularity(void);
 void *ma_sysalloc(size_t size);
 bool ma_sysfree(void *p, size_t size);
+
+#if MA_TRACK_CHUNKS
+void ma_debug_add_chunk(struct ma_debug **list, const struct ma_hdr *chunk);
+void ma_debug_rem_chunk(struct ma_debug **list, const struct ma_hdr *chunk);
+void ma_debug_for_each(const struct ma_debug *list, void (*f)(const struct ma_hdr *));
+#else
+inline void ma_debug_add_chunk(struct ma_debug **list,
+			       const struct ma_hdr *chunk)
+{
+	(void)list;
+	(void)chunk;
+}
+
+inline void ma_debug_rem_chunk(struct ma_debug **list, const struct ma_hdr *chunk) {
+	(void)list;
+	(void)chunk;
+}
+
+inline void ma_debug_for_each(const struct ma_debug *list, void (*f)(const struct ma_hdr *)) {
+	(void)list;
+	(void)f;
+}
+#endif
 #endif

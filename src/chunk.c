@@ -291,11 +291,7 @@ struct ma_hdr *ma_alloc_chunk(struct ma_arena *arena, size_t minsize,
 	// See comment in top of ma/internal.h for explanation
 	chunk = (struct ma_hdr *)((uintptr_t)chunk | MA_HALF_MALLOC_ALIGN);
 
-	// TODO remove
-	if (class == MA_SMALL && !arena->debug[0])
-		arena->debug[0] = chunk;
-	else if (class == MA_LARGE && !arena->debug[1])
-		arena->debug[1] = chunk;
+	ma_debug_add_chunk(&arena->debug, chunk);
 
 	size_t size = actual_size - MA_CHUNK_ALLOC_PADDING;
 	struct ma_hdr *sentinel = ma_init_chunk(chunk, class, size, true);
@@ -305,7 +301,7 @@ struct ma_hdr *ma_alloc_chunk(struct ma_arena *arena, size_t minsize,
 	return chunk;
 }
 
-void ma_dealloc_chunk(struct ma_hdr *chunk)
+void ma_dealloc_chunk(struct ma_arena *arena, struct ma_hdr *chunk)
 {
 	ft_assert(ma_is_sentinel(ma_next_hdr(chunk)) &&
 		  "partially deallocate should not happen");
@@ -315,6 +311,7 @@ void ma_dealloc_chunk(struct ma_hdr *chunk)
 		ft_perror("ma_sysfree");
 		ft_abort();
 	}
+	ma_debug_rem_chunk(&arena->debug, chunk);
 }
 
 bool ma_is_user_chunk(const struct ma_hdr *chunk)

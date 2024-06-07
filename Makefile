@@ -14,8 +14,8 @@ SRC_FILES	:= $(shell find $(SRC_DIR) -name '*.c')
 OBJ_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC_FILES))
 DEP_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(DEP_DIR)/%.d,$(SRC_FILES))
 
-CFLAGS		:= -Wall -Wextra -O0 -g3 -DMA_TRACES=0 -MMD -Iinclude -I$(LIBFT_DIR)/include -DMA_COMPILE_AS_LIBC=0 -fPIC -DMA_SEGREGATED_BESTFIT=0
-LFLAGS		:= -shared -lpthread
+CFLAGS		:= -Wall -Wextra -O3 -g -DMA_TRACES=0 -MMD -Iinclude -I$(LIBFT_DIR)/include -DMA_COMPILE_AS_LIBC=0 -fPIC -DMA_SEGREGATED_BESTFIT=0 -DMA_TRACK_CHUNKS=1
+LFLAGS		:= -shared -lpthread -flto
 
 all: $(NAME)
 
@@ -28,7 +28,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c Makefile
 	$(CC) -c $< -o $@ $(CFLAGS)
 
 stress: $(OBJ_FILES) tests/stress.cc Makefile
-	$(CXX) tests/stress.cc -std=c++20 $(OBJ_FILES) $(LIBFT_LIB) -g3 -O3 -Wall -Wextra -o $@ -Iinclude
+	$(CXX) tests/stress.cc -std=c++20 $(OBJ_FILES) $(LIBFT_LIB) -g -O3 -Wall -Wextra -o $@ -Iinclude -flto
 
 debug: $(OBJ_FILES)
 	@echo $(OBJ_FILES)
