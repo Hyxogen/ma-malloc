@@ -1,5 +1,9 @@
 #include "ma/internal.h"
 
+#if MA_SEGREGATED_BESTFIT
+#include <errno.h>
+#endif
+
 static void *ma_aligned_alloc_no_lock(struct ma_arena *arena, size_t align, size_t size)
 {
 	ft_assert(align > MA_MALLOC_ALIGN);
