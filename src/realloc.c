@@ -30,7 +30,8 @@ static void *ma_realloc_shrink(struct ma_arena *arena, struct ma_hdr *old_chunk,
 
 	size_t rem = old_size - new_size;
 
-	if (rem >= MA_MIN_CHUNK_SIZE && (!MA_SEGREGATED_BESTFIT || ma_should_split(old_chunk, new_size))) {
+	if (rem >= MA_MIN_CHUNK_SIZE &&
+	    (!MA_SEGREGATED_BESTFIT || ma_should_split(old_chunk, new_size))) {
 		ma_set_size(old_chunk, new_size);
 
 		struct ma_hdr *next = ma_next_hdr(old_chunk);
@@ -38,7 +39,7 @@ static void *ma_realloc_shrink(struct ma_arena *arena, struct ma_hdr *old_chunk,
 		    ma_init_chunk(next, ma_get_size_class(old_chunk),
 				  rem - MA_HEADER_SIZE, true);
 
-		//TODO just use ma_maybe_merge?
+		// TODO just use ma_maybe_merge?
 		if (!ma_is_sentinel(nextnext) && !ma_is_inuse(nextnext)) {
 			ma_unlink_chunk_any(arena, nextnext);
 			next = ma_merge_chunks(next, nextnext);
@@ -59,7 +60,7 @@ static void *ma_realloc_grow(struct ma_arena *arena, struct ma_hdr *old_chunk,
 	enum ma_size_class chunk_class = ma_get_size_class(old_chunk);
 
 	struct ma_hdr *next = ma_next_hdr(old_chunk);
-	//Wow this is ugly, TODO make it prettier
+	// Wow this is ugly, TODO make it prettier
 	if (ma_is_sentinel(next) || ma_is_inuse(next) ||
 	    ma_get_size(next) + MA_HEADER_SIZE < needed ||
 	    (MA_SEGREGATED_BESTFIT && !ma_should_split(next, needed) &&
