@@ -425,11 +425,13 @@ void ma_assert_correct_chunk(const struct ma_hdr *chunk)
 
 		ft_assert((ftr & ~MA_PINUSE_FLAG) == (hdr & ~MA_PINUSE_FLAG));
 
-		ft_assert(chunk->next);
-		ft_assert(chunk->prev);
+		if (!ma_is_huge(chunk)) {
+			ft_assert(chunk->next);
+			ft_assert(chunk->prev);
 
-		ft_assert(chunk->next->prev == chunk);
-		ft_assert(chunk->prev->next == chunk);
+			ft_assert(chunk->next->prev == chunk);
+			ft_assert(chunk->prev->next == chunk);
+		}
 
 		ft_assert(ma_is_pinuse(chunk) && "chunks should be merged");
 
