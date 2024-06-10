@@ -395,6 +395,7 @@ void ma_dump_all_chunks(const struct ma_hdr *list, void *unused)
 	if (!cur)
 		return;
 
+	eprint("%p:\n", (void*) list);
 	while (1) {
 		ma_dump_chunk(cur);
 
