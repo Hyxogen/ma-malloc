@@ -46,7 +46,8 @@ bool ma_check_requestsize(size_t size)
 	return true;
 }
 
-uint64_t ma_ctlz(uint64_t x) {
+uint64_t ma_ctlz(uint64_t x)
+{
 #if FT_BONUS
 	return __builtin_ctzll(x);
 #else

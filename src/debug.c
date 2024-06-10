@@ -7,6 +7,10 @@
 #include <fcntl.h>
 #endif
 
+#if MA_TRACK_CHUNKS
+#include <ft/string.h>
+#endif
+
 #if FT_BONUS
 #include <stdlib.h>
 #endif
@@ -40,7 +44,7 @@ char *ft_strerror(int err)
 #if FT_BONUS
 	return strerror(err);
 #else
-	(void) err;
+	(void)err;
 	return "no error information because of mandatory mode";
 #endif
 }
@@ -58,68 +62,129 @@ void ft_perror(const char *s)
 #endif
 }
 
+static void ma_show_alloc_mem_list(const struct ma_hdr *hdr, void *ctx)
+{
+	if (!hdr)
+		return;
+
+	switch (ma_get_size_class(hdr)) {
+	case MA_SMALL:
+		ft_printf("TINY");
+		break;
+	case MA_LARGE:
+		ft_printf("SMALL");
+		break;
+	case MA_HUGE:
+		ft_printf("LARGE");
+	}
+	ft_printf(" : 0x%lX\n", (unsigned long)hdr);
+
+	size_t *total = ctx;
+
+	while (!ma_is_sentinel(hdr)) {
+		if (ma_is_inuse(hdr)) {
+			void *p = ma_chunk_to_mem(hdr);
+			size_t size = ma_get_size(hdr);
+
+			ft_printf(
+			    "0x%lX - 0x%lX : %zu bytes\n", (unsigned long)p,
+			    (unsigned long)((unsigned char *)p + size), size);
+
+			*total += size;
+		}
+		hdr = ma_next_hdr(hdr);
+	}
+}
+
+void ma_show_alloc_mem(void)
+{
+	ma_maybe_initialize();
+
+	struct ma_arena *arena = ma_get_current_arena();
+
+	ma_lock_arena(arena);
+
+	size_t total = 0;
+
+	ma_debug_for_each(&arena->debug, ma_show_alloc_mem_list, &total);
+
+	ft_printf("Total : %zu bytes\n", total);
+
+	ma_unlock_arena(arena);
+}
+
+void show_alloc_mem(void) { ma_show_alloc_mem(); }
+
 void ma_dump(void) { ma_dump_arena(ma_get_current_arena()); }
 
+void ma_init_debug(struct ma_debug *debug)
+{
+	debug->num_entries = 0;
+	debug->capacity = 0;
+	debug->entries = NULL;
+}
+
 #if MA_TRACK_CHUNKS
-void ma_debug_add_chunk(struct ma_debug **list, const struct ma_hdr *chunk)
-{
-	struct ma_debug *cur = *list;
 
-	while (cur) {
-		for (size_t i = 0; i < sizeof(cur->_entries)/sizeof(cur->_entries[0]); ++i) {
-			if (!cur->_entries[i]) {
-				cur->_entries[i] = chunk;
-				return;
-			}
+void ma_debug_sort(struct ma_debug *debug)
+{
+	for (size_t i = 1; i < debug->num_entries; ++i) {
+		if ((debug->entries[i - 1] == NULL && debug->entries[i]) ||
+		    (debug->entries[i - 1] > debug->entries[i])) {
+			const struct ma_hdr *tmp = debug->entries[i - 1];
+			debug->entries[i - 1] = debug->entries[i];
+			debug->entries[i] = tmp;
+			i = 1;
+		}
+	}
+}
+
+void ma_debug_add_chunk(struct ma_debug *debug, const struct ma_hdr *chunk)
+{
+	if (debug->num_entries == debug->capacity) {
+		size_t new_cap =
+		    debug->capacity == 0 ? 1024 : debug->capacity * 2;
+		const struct ma_hdr **new_entries =
+		    ma_sysalloc(new_cap * sizeof(*debug->entries));
+
+		if (new_entries == MA_SYSALLOC_FAILED) {
+			eprint(
+			    "ma_sysalloc: failed to allocate memory for debug tracking");
+			return;
 		}
 
-		if (cur->_next)
-			cur = cur->_next;
-		else
+		if (debug->capacity > 0) {
+			ft_memcpy(new_entries, debug->entries,
+				  sizeof(*debug->entries) * debug->num_entries);
+			ma_sysfree(debug->entries, sizeof(*debug->entries) *
+						       debug->num_entries);
+		}
+
+		debug->capacity = new_cap;
+		debug->entries = new_entries;
+	}
+
+	debug->entries[debug->num_entries++] = chunk;
+	ma_debug_sort(debug);
+}
+
+void ma_debug_rem_chunk(struct ma_debug *debug, const struct ma_hdr *chunk)
+{
+	for (size_t i = 0; i < debug->num_entries; ++i) {
+		if (debug->entries[i] == chunk) {
+			debug->entries[i] = NULL;
 			break;
+		}
 	}
-
-	struct ma_debug *new = ma_sysalloc(sizeof(*new));
-	if (new == MA_SYSALLOC_FAILED) {
-		eprint("ma_sysalloc: failed to allocate memory for debug tracking\n");
-		return;
-	}
-
-	if (*list) {
-		cur->_next = new;
-		new->_prev = cur;
-	} else {
-		*list = new;
-	}
-
-	new->_entries[0] = chunk;
+	ma_debug_sort(debug);
+	debug->num_entries -= 1;
 }
 
-void ma_debug_rem_chunk(struct ma_debug **list, const struct ma_hdr *chunk)
+void ma_debug_for_each(const struct ma_debug *debug,
+		       void (*f)(const struct ma_hdr *, void *), void *ctx)
 {
-	struct ma_debug *cur = *list;
-
-	while (cur) {
-		for (size_t i = 0; i < sizeof(cur->_entries)/sizeof(cur->_entries[0]); ++i) {
-			if (cur->_entries[i] == chunk) {
-				cur->_entries[i] = NULL;
-				return;
-			}
-		}
-		cur = cur->_next;
-	}
-}
-
-void ma_debug_for_each(const struct ma_debug *list, void (*f)(const struct ma_hdr *))
-{
-	const struct ma_debug *cur = list;
-
-	while (cur) {
-		for (size_t i = 0; i < sizeof(cur->_entries)/sizeof(cur->_entries[0]); ++i) {
-			if (cur->_entries[i])
-				f(cur->_entries[i]);
-		}
-		cur = cur->_next;
+	for (size_t i = 0; i < debug->num_entries; ++i) {
+		f(debug->entries[i], ctx);
 	}
 }
 #endif

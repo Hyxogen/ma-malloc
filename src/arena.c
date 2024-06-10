@@ -7,6 +7,8 @@ void ma_init_arena(struct ma_arena *arena)
 		eprint("pthread_mutex_init: %s\n", ft_strerror(rc));
 		ft_abort();
 	}
+
+	ma_init_debug(&arena->debug);
 }
 
 void ma_lock_arena(struct ma_arena *arena)
@@ -237,7 +239,7 @@ void ma_unlink_chunk_any(struct ma_arena *arena, struct ma_hdr *chunk)
 
 void ma_dump_arena(const struct ma_arena *arena)
 {
-	ma_debug_for_each(arena->debug, ma_dump_all_chunks);
+	ma_debug_for_each(&arena->debug, ma_dump_all_chunks, NULL);
 }
 
 #ifndef FT_NDEBUG
@@ -267,7 +269,7 @@ void ma_assert_correct_bin(const struct ma_hdr *list, size_t min, size_t max)
 
 void ma_assert_correct_arena(const struct ma_arena *arena)
 {
-	ma_debug_for_each(arena->debug, ma_assert_correct_all_chunks);
+	ma_debug_for_each(&arena->debug, ma_assert_correct_all_chunks, NULL);
 
 	size_t size = MA_MIN_SMALL_SIZE;
 	size_t bin;
@@ -285,7 +287,8 @@ void ma_assert_correct_arena(const struct ma_arena *arena)
 	while (count >= 2) {
 		for (size_t i = 0; i < count; ++i) {
 			max_size = min_size + size;
-			ma_assert_correct_bin(arena->bins[bin + i], min_size, max_size);
+			ma_assert_correct_bin(arena->bins[bin + i], min_size,
+					      max_size);
 			min_size = max_size;
 		}
 		bin += count;

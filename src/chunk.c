@@ -73,7 +73,7 @@ enum ma_size_class ma_get_size_class(const struct ma_hdr *hdr)
 struct ma_hdr *ma_next_hdr(const void *chunk)
 {
 	struct ma_hdr *hdr = (struct ma_hdr *)chunk;
-	return (struct ma_hdr *)((char *)chunk + ma_get_size(hdr) +
+	return (struct ma_hdr *)((unsigned char *)chunk + ma_get_size(hdr) +
 				 MA_HEADER_SIZE);
 }
 
@@ -84,14 +84,15 @@ struct ma_hdr *ma_prev_hdr(const void *chunk)
 	ft_assert(!ma_is_pinuse(hdr));
 #endif
 
-	size_t prev_size = ma_get_size((char *)chunk - MA_FOOTER_SIZE);
-	return (struct ma_hdr *)((char *)chunk - prev_size - MA_HEADER_SIZE);
+	size_t prev_size = ma_get_size((unsigned char *)chunk - MA_FOOTER_SIZE);
+	return (struct ma_hdr *)((unsigned char *)chunk - prev_size -
+				 MA_HEADER_SIZE);
 }
 
 static size_t *ma_get_ftr(const struct ma_hdr *chunk)
 {
-	return (size_t *)((char *)chunk + ma_get_size(chunk) + MA_HEADER_SIZE -
-			  MA_FOOTER_SIZE);
+	return (size_t *)((unsigned char *)chunk + ma_get_size(chunk) +
+			  MA_HEADER_SIZE - MA_FOOTER_SIZE);
 }
 
 static void ma_set_ftr(struct ma_hdr *chunk)
@@ -114,12 +115,12 @@ void ma_set_inuse(struct ma_hdr *chunk, bool v)
 
 void *ma_chunk_to_mem(const struct ma_hdr *chunk)
 {
-	return (char *)chunk + MA_HEADER_SIZE;
+	return (unsigned char *)chunk + MA_HEADER_SIZE;
 }
 
 struct ma_hdr *ma_mem_to_chunk(const void *p)
 {
-	return (struct ma_hdr *)((char *)p - MA_HEADER_SIZE);
+	return (struct ma_hdr *)((unsigned char *)p - MA_HEADER_SIZE);
 }
 
 void ma_make_sentinel(struct ma_hdr *chunk, enum ma_size_class class,
@@ -365,7 +366,7 @@ void ma_dump_chunk(const struct ma_hdr *chunk)
 	const void *userptr = ma_mem_to_chunk(chunk);
 
 	eprint("%p: %p - %p: ", (void *)chunk, (void *)userptr,
-	       (void *)((char *)userptr + size));
+	       (void *)((unsigned char *)userptr + size));
 
 	eprint("p=%i s=%i l=%i size=%7zu", ma_is_pinuse(chunk),
 	       ma_is_small(chunk), ma_is_large(chunk), size);
@@ -380,8 +381,9 @@ void ma_dump_chunk(const struct ma_hdr *chunk)
 	eprint("\033[m\n");
 }
 
-void ma_dump_all_chunks(const struct ma_hdr *list)
+void ma_dump_all_chunks(const struct ma_hdr *list, void *unused)
 {
+	(void)unused;
 	const struct ma_hdr *cur = list;
 	if (!cur)
 		return;
@@ -431,8 +433,9 @@ void ma_assert_correct_chunk(const struct ma_hdr *chunk)
 	}
 }
 
-void ma_assert_correct_all_chunks(const struct ma_hdr *list)
+void ma_assert_correct_all_chunks(const struct ma_hdr *list, void *unused)
 {
+	(void)unused;
 	const struct ma_hdr *cur = list;
 	if (!cur)
 		return;
