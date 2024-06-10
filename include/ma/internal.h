@@ -40,6 +40,10 @@
 #define MA_TRACK_CHUNKS 0
 #endif
 
+#ifndef FT_BONUS
+#define FT_BONUS 0
+#endif
+
 #define MA_PINUSE_FLAG ((size_t)0b001)
 #define MA_SMALL_FLAG ((size_t)0b010)
 #define MA_LARGE_FLAG ((size_t)0b100)
@@ -253,7 +257,7 @@ void ma_assert_correct_all_chunks(const struct ma_hdr *list);
 void ma_assert_correct_arena(const struct ma_arena *arena);
 #endif
 
-void ft_abort(void);
+[[noreturn]] void ft_abort(void);
 void ft_assert_impl(int pred, const char *predstr, const char *func,
 		    const char *file, int line);
 char *ft_strerror(int err);

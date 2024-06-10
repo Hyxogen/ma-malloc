@@ -46,7 +46,23 @@ bool ma_check_requestsize(size_t size)
 	return true;
 }
 
-uint64_t ma_ctlz(uint64_t x) { return __builtin_ctzll(x); }
+uint64_t ma_ctlz(uint64_t x) {
+#if FT_BONUS
+	return __builtin_ctzll(x);
+#else
+	if (x) {
+		x = (x ^ (x - 1)) >> 1;
+
+		int c;
+		for (c = 0; x; c++) {
+			x >>= 1;
+		}
+
+		return c;
+	}
+	return CHAR_BIT * sizeof(x);
+#endif
+}
 
 enum ma_size_class ma_get_size_class_from_size(size_t size)
 {

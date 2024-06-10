@@ -1,15 +1,28 @@
 #include "ma/internal.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <errno.h>
+#include <signal.h>
 
 #if MA_TRACES
 #include <fcntl.h>
 #endif
 
+#if FT_BONUS
+#include <stdlib.h>
+#endif
+
 // TODO implement in libft
-void ft_abort(void) { abort(); }
+[[noreturn]] void ft_abort(void)
+{
+#if FT_BONUS
+	abort();
+#else
+	pthread_kill(pthread_self(), SIGABRT);
+	pthread_kill(pthread_self(), SIGKILL);
+
+	__builtin_unreachable();
+#endif
+}
 
 void ft_assert_impl(int pred, const char *predstr, const char *func,
 		    const char *file, int line)
@@ -22,9 +35,28 @@ void ft_assert_impl(int pred, const char *predstr, const char *func,
 	}
 }
 
-char *ft_strerror(int err) { return strerror(err); }
+char *ft_strerror(int err)
+{
+#if FT_BONUS
+	return strerror(err);
+#else
+	(void) err;
+	return "no error information because of mandatory mode";
+#endif
+}
 
-void ft_perror(const char *s) { perror(s); }
+void ft_perror(const char *s)
+{
+#if FT_BONUS
+	perror(s);
+#else
+	if (s)
+		eprint("%s", s);
+	else
+		eprint("mamalloc");
+	eprint(": %s\n", ft_strerror(errno));
+#endif
+}
 
 void ma_dump(void) { ma_dump_arena(ma_get_current_arena()); }
 
