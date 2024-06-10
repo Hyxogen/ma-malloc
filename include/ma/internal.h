@@ -252,6 +252,7 @@ size_t ma_freelist_idx(const struct ma_hdr *hdr);
 void ma_init_arena(struct ma_arena *arena);
 struct ma_arena *ma_get_current_arena(void);
 struct ma_arena *ma_get_arena(const void *p);
+void ma_init_opts(void);
 const struct ma_opts *ma_get_opts(void);
 
 void ma_dump_all_chunks(const struct ma_hdr *list, void *unused);

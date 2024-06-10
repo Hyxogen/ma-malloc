@@ -16,6 +16,11 @@
 #include <stdlib.h>
 #endif
 
+struct show_alloc_mem_ctx {
+	size_t total;
+	bool hexdump;
+};
+
 // TODO implement in libft
 [[noreturn]] void ft_abort(void)
 {
@@ -63,10 +68,49 @@ void ft_perror(const char *s)
 #endif
 }
 
-static void ma_show_alloc_mem_list(const struct ma_hdr *hdr, void *ctx)
+static void ma_hexdump_to(int fd, const void *p, size_t n, int width)
+{
+	if (width < 0) {
+		width = 1;
+		for (size_t i = n; i; i /= 16) {
+			width += 1;
+		}
+	}
+
+	const unsigned char *s = (const unsigned char *)p;
+	for (size_t offset = 0; offset < n; offset += 16) {
+		if (offset)
+			ft_dprintf(fd, "\n");
+		ft_dprintf(fd, "%0*zu:", width, offset);
+
+		for (size_t i = 0; i < 16; ++i) {
+			if ((i % 2) == 0)
+				ft_dprintf(fd, " ");
+
+			if (offset + i >= n)
+				ft_dprintf(fd, "  ");
+			else
+				ft_dprintf(fd, "%02hhx", s[offset + i]);
+		}
+
+		ft_dprintf(fd, "  ");
+
+		for (size_t i = 0; i < 16 && offset + i < n; ++i) {
+			if (ft_isprint(s[offset + i]))
+				ft_dprintf(fd, "%c", s[offset + i]);
+			else
+				ft_dprintf(fd, ".");
+		}
+	}
+	ft_dprintf(fd, "\n");
+}
+
+static void ma_show_alloc_mem_list(const struct ma_hdr *hdr, void *opaque)
 {
 	if (!hdr)
 		return;
+	struct show_alloc_mem_ctx *ctx = (struct show_alloc_mem_ctx*) opaque;
+	int width = 8;
 
 	switch (ma_get_size_class(hdr)) {
 	case MA_SMALL:
@@ -76,11 +120,10 @@ static void ma_show_alloc_mem_list(const struct ma_hdr *hdr, void *ctx)
 		ft_printf("SMALL");
 		break;
 	case MA_HUGE:
+		width = -1;
 		ft_printf("LARGE");
 	}
 	ft_printf(" : 0x%lX\n", (unsigned long)hdr);
-
-	size_t *total = ctx;
 
 	while (!ma_is_sentinel(hdr)) {
 		if (ma_is_inuse(hdr)) {
@@ -91,22 +134,25 @@ static void ma_show_alloc_mem_list(const struct ma_hdr *hdr, void *ctx)
 			    "0x%lX - 0x%lX : %zu bytes\n", (unsigned long)p,
 			    (unsigned long)((unsigned char *)p + size), size);
 
-			*total += size;
+			if (ctx->hexdump)
+				ma_hexdump_to(STDOUT_FILENO, p, size, width);
+
+			ctx->total += size;
 		}
 		hdr = ma_next_hdr(hdr);
 	}
 }
 
-static void ma_show_alloc_mem_no_lock(const struct ma_arena *arena)
+static void ma_show_alloc_mem_no_lock(const struct ma_arena *arena, bool hexdump)
 {
-	size_t total = 0;
+	struct show_alloc_mem_ctx ctx = { .total = 0, .hexdump = hexdump };
 
-	ma_debug_for_each(&arena->debug, ma_show_alloc_mem_list, &total);
+	ma_debug_for_each(&arena->debug, ma_show_alloc_mem_list, &ctx);
 
-	ft_printf("Total : %zu bytes\n", total);
+	ft_printf("Total : %zu bytes\n", ctx.total);
 }
 
-void ma_show_alloc_mem(void)
+void ma_show_alloc_mem(bool hexdump)
 {
 	ma_maybe_initialize();
 
@@ -114,12 +160,13 @@ void ma_show_alloc_mem(void)
 
 	ma_lock_arena(arena);
 
-	ma_show_alloc_mem_no_lock(arena);
+	ma_show_alloc_mem_no_lock(arena, hexdump);
 
 	ma_unlock_arena(arena);
 }
 
-void show_alloc_mem(void) { ma_show_alloc_mem(); }
+void show_alloc_mem(void) { ma_show_alloc_mem(false); }
+void show_alloc_mem_ex(void) { ma_show_alloc_mem(true); }
 
 void ma_dump(void) { ma_dump_arena(ma_get_current_arena()); }
 
@@ -129,6 +176,7 @@ void ma_init_debug(struct ma_debug *debug)
 	debug->capacity = 0;
 	debug->entries = NULL;
 }
+
 
 #if MA_TRACK_CHUNKS
 
