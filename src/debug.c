@@ -109,7 +109,7 @@ static void ma_show_alloc_mem_list(const struct ma_hdr *hdr, void *opaque)
 {
 	if (!hdr)
 		return;
-	struct show_alloc_mem_ctx *ctx = (struct show_alloc_mem_ctx*) opaque;
+	struct show_alloc_mem_ctx *ctx = (struct show_alloc_mem_ctx *)opaque;
 	int width = 8;
 
 	switch (ma_get_size_class(hdr)) {
@@ -143,9 +143,10 @@ static void ma_show_alloc_mem_list(const struct ma_hdr *hdr, void *opaque)
 	}
 }
 
-static void ma_show_alloc_mem_no_lock(const struct ma_arena *arena, bool hexdump)
+static void ma_show_alloc_mem_no_lock(const struct ma_arena *arena,
+				      bool hexdump)
 {
-	struct show_alloc_mem_ctx ctx = { .total = 0, .hexdump = hexdump };
+	struct show_alloc_mem_ctx ctx = {.total = 0, .hexdump = hexdump};
 
 	ma_debug_for_each(&arena->debug, ma_show_alloc_mem_list, &ctx);
 
@@ -176,7 +177,6 @@ void ma_init_debug(struct ma_debug *debug)
 	debug->capacity = 0;
 	debug->entries = NULL;
 }
-
 
 #if MA_TRACK_CHUNKS
 

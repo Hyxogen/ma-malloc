@@ -232,7 +232,7 @@ void ma_append_chunk_any(struct ma_arena *arena, struct ma_hdr *chunk)
 void ma_unlink_chunk_any(struct ma_arena *arena, struct ma_hdr *chunk)
 {
 	if (ma_is_huge(chunk))
-		return; //nothing to unlink
+		return; // nothing to unlink
 	size_t tmp;
 	struct ma_hdr **list = ma_get_list(arena, chunk, &tmp);
 

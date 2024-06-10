@@ -9,10 +9,7 @@ static struct ma_opts *ma_get_opts_mut(void)
 	return &opts;
 }
 
-const struct ma_opts *ma_get_opts(void)
-{
-	return ma_get_opts_mut();
-}
+const struct ma_opts *ma_get_opts(void) { return ma_get_opts_mut(); }
 
 void ma_init_opts(void)
 {
