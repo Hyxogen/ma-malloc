@@ -130,7 +130,9 @@ void ma_init_debug(struct ma_debug *debug)
 void ma_debug_sort(struct ma_debug *debug)
 {
 	for (size_t i = 1; i < debug->num_entries; ++i) {
-		if ((debug->entries[i - 1] == NULL && debug->entries[i]) ||
+		if (!debug->entries[i])
+			continue;
+		if (debug->entries[i - 1] == NULL ||
 		    (debug->entries[i - 1] > debug->entries[i])) {
 			const struct ma_hdr *tmp = debug->entries[i - 1];
 			debug->entries[i - 1] = debug->entries[i];
