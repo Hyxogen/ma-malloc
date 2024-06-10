@@ -25,14 +25,15 @@ static std::random_device rd;
 static std::mt19937 gen(rd());
 static std::unordered_map<void*, size_t> live;
 static size_t nalloc = 0;
+#if MA_DUMP
 static FILE *out;
+#endif
 constexpr unsigned char fill_byte = 0xbe;
 
+#if MA_DUMP
 template <class... Args>
 static void dump_print(const char *fmt, Args... args) {
-#if MA_DUMP
 	fprintf(out, fmt, args...);
-#endif
 }
 
 static void dump_file(FILE *dest, FILE *file)
@@ -52,6 +53,12 @@ static void dump_file(FILE *dest, FILE *file)
 	}
 	fflush(file);
 }
+
+#else
+template <class... Args>
+static void dump_print(const char * /*unused*/, Args... /*unused*/) {
+}
+#endif
 
 static size_t gen_malloc_size()
 {
@@ -157,9 +164,8 @@ static void sighandler(int signum)
 static void start_hammer(std::optional<unsigned> timeout)
 {
 	if (timeout) {
-		struct sigaction action = {
-			.sa_handler = sighandler,
-		};
+		struct sigaction action = {};
+		action.sa_handler = sighandler,
 
 		assert(!sigemptyset(&action.sa_mask));
 		assert(!sigaction(SIGALRM, &action, NULL));
