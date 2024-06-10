@@ -4,8 +4,8 @@ endif
 
 NAME		:= libft_malloc_$(HOSTTYPE).so
 
-CC		:= clang
-CXX		:= clang++
+CC		?= cc
+CXX		?= c++
 
 LIBFT_DIR	:= libft
 LIBFT_LIB	:= $(LIBFT_DIR)/libft.a
