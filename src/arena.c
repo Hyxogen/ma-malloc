@@ -244,8 +244,7 @@ void ma_dump_arena(const struct ma_arena *arena)
 	ma_debug_for_each(&arena->debug, ma_dump_all_chunks, NULL);
 }
 
-#ifndef FT_NDEBUG
-
+#if !defined(FT_NDEBUG) && MA_CHECK_SELF
 void ma_assert_correct_bin(const struct ma_hdr *list, size_t min, size_t max)
 {
 	const struct ma_hdr *cur = list;

@@ -405,7 +405,7 @@ void ma_dump_all_chunks(const struct ma_hdr *list, void *unused)
 	}
 }
 
-#ifndef FT_NDEBUG
+#if !defined(FT_NDEBUG) && MA_CHECK_SELF
 void ma_assert_correct_chunk(const struct ma_hdr *chunk)
 {
 	ft_assert((uintptr_t)chunk & MA_HALF_MALLOC_ALIGN);
