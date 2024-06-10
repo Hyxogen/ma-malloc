@@ -88,7 +88,7 @@ clean:
 
 fclean:
 	@${MAKE} clean
-	@${MAKE} -C $(LIBFT_LIB) fclean
+	@${MAKE} -C $(LIBFT_DIR) fclean
 	rm -f $(NAME)
 
 re:
