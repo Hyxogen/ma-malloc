@@ -82,7 +82,7 @@ void ma_maybe_perturb_free(void *p)
 		return;
 
 	struct ma_hdr *chunk = ma_mem_to_chunk(p);
-	uint8_t fill = ma_get_opts()->perturb_byte;
+	uint8_t fill = ~ma_get_opts()->perturb_byte;
 	ma_chunk_fill(chunk, fill);
 }
 
