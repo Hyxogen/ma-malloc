@@ -69,7 +69,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c Makefile
 	@mkdir -p $(@D)
 	$(CC) -c $< -o $@ $(CFLAGS)
 
-stress: $(OBJ_FILES) tests/stress.cc Makefile
+stress: $(OBJ_FILES) $(LIBFT_LIB) tests/stress.cc Makefile
 	$(CXX) tests/stress.cc -std=c++20 $(OBJ_FILES) $(LIBFT_LIB) -g3 -O0 -Wall -Wextra -o $@ -Iinclude -flto
 
 debug: $(OBJ_FILES)
