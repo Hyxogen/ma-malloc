@@ -9,7 +9,16 @@
 #include <ft/stdio.h>
 #include <unistd.h>
 
+#ifndef MA_USE_PTHREAD
+#define MA_USE_PTHREAD 1
+#endif
+
+#if MA_USE_PTHREAD
 #include <pthread.h>
+typedef pthread_mutex_t ma_mtx;
+#else
+typedef int ma_mtx;
+#endif
 
 /*
  * The subject for which this malloc was made requires that the implemention has
@@ -156,7 +165,7 @@ struct ma_arena {
 
 	struct ma_debug debug;
 
-	pthread_mutex_t mtx;
+	ma_mtx mtx;
 };
 _Static_assert(MA_BIN_COUNT <= sizeof(uint64_t) * 2 * CHAR_BIT,
 	       "required to use fast bin bitmaps");
@@ -214,6 +223,10 @@ void ma_maybe_perturb_free(void *p);
 // returns false if an allocation should return NULL, might set errno
 bool ma_check_requestsize(size_t n);
 size_t ma_get_prealloc_size(enum ma_size_class class);
+
+[[nodiscard]] int ma_init_mutex(ma_mtx *mtx);
+[[nodiscard]] int ma_lock_mutex(ma_mtx *mtx);
+[[nodiscard]] int ma_unlock_mutex(ma_mtx *mtx);
 
 // returns false on a failure
 void ma_lock_arena(struct ma_arena *arena);

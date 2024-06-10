@@ -3,8 +3,8 @@
 void ma_init_arena(struct ma_arena *arena)
 {
 	int rc;
-	if ((rc = pthread_mutex_init(&arena->mtx, NULL))) {
-		eprint("pthread_mutex_init: %s\n", ft_strerror(rc));
+	if ((rc = ma_init_mutex(&arena->mtx))) {
+		eprint("ma_init_mutex: %s\n", ft_strerror(rc));
 		ft_abort();
 	}
 
@@ -14,8 +14,8 @@ void ma_init_arena(struct ma_arena *arena)
 void ma_lock_arena(struct ma_arena *arena)
 {
 	int rc;
-	if ((rc = pthread_mutex_lock(&arena->mtx))) {
-		eprint("pthread_mutex_lock: %s\n", ft_strerror(rc));
+	if ((rc = ma_lock_mutex(&arena->mtx))) {
+		eprint("ma_lock_mutex: %s\n", ft_strerror(rc));
 		ft_abort();
 	}
 }
@@ -23,8 +23,8 @@ void ma_lock_arena(struct ma_arena *arena)
 void ma_unlock_arena(struct ma_arena *arena)
 {
 	int rc;
-	if ((rc = pthread_mutex_unlock(&arena->mtx))) {
-		eprint("pthread_mutex_unlock: %s\n", ft_strerror(rc));
+	if ((rc = ma_unlock_mutex(&arena->mtx))) {
+		eprint("ma_unlock_mutex: %s\n", ft_strerror(rc));
 		ft_abort();
 	}
 }
