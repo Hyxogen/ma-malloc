@@ -19,7 +19,7 @@ OBJ_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC_FILES))
 DEP_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(DEP_DIR)/%.d,$(SRC_FILES))
 
 ifndef config
-	config	:= debug
+	config	:= distr
 endif
 
 CFLAGS		:= -Wall -Wextra -MMD -Iinclude -I$(LIBFT_DIR)/include -fPIC -DMA_TRACES=0
@@ -37,7 +37,7 @@ $(error "Unknown config '$(config)'. Available: debug, release, distr")
 endif
 
 ifndef check
-	check	:= all
+	check	:= none
 endif
 
 ifeq ($(check),all)
