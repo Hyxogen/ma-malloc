@@ -77,6 +77,22 @@ static void gen_memset(void* p, size_t idx, size_t n)
 	memset(p, fill_byte, n);
 }
 
+static void gen_aligned_alloc()
+{
+	static std::uniform_int_distribution<> align_distr(5, 24);
+	size_t size = gen_malloc_size();
+
+	size_t align = 1 << align_distr(gen);
+
+	dump_print("\tvoid *p_%zu = ma_aligned_alloc(%zu, %zu);\n", nalloc, align, size);
+	void *p = ma_aligned_alloc(align, size);
+	assert(p);
+	gen_memset(p, nalloc, size);
+	live[p] = nalloc;
+
+	nalloc += 1;
+}
+
 static void gen_malloc()
 {
 	size_t size = gen_malloc_size();
@@ -89,6 +105,16 @@ static void gen_malloc()
 	gen_memset(p, nalloc, size);
 	live[p] = nalloc;
 	nalloc += 1;
+}
+
+static void gen_alloc()
+{
+	static std::bernoulli_distribution bool_distr(0.8);
+
+	if (bool_distr(gen))
+		gen_malloc();
+	else
+		gen_aligned_alloc();
 }
 
 static std::pair<void*, size_t> pop_random_pointer()
@@ -143,7 +169,7 @@ static void gen_cmd()
 
 	switch (cmd(gen)) {
 	case 0:
-		gen_malloc();
+		gen_alloc();
 		break;
 	case 1:
 		gen_realloc();
@@ -229,17 +255,25 @@ int main(int argc, char **argv)
 
 	dump_print("}\n");
 
+	bool should_dump = false;
 	if (WIFSIGNALED(status)) {
 		std::cout << "KO: received a signal" << std::endl;
 		std::cout << "seed: " << seed << std::endl;
-		return 1;
+		should_dump = true;
 	} else if (!WIFEXITED(status)) {
 		std::cout << "KO: did not exit properly" << std::endl;
 		std::cout << "seed: " << seed << std::endl;
-		return 1;
+		should_dump = true;
 	} else if (WEXITSTATUS(status) != 0) {
 		std::cout << "KO: program did not return 0" << std::endl;
 		std::cout << "seed: " << seed << std::endl;
+		should_dump = true;
+	}
+
+	if (should_dump) {
+#if MA_DUMP
+		dump();
+#endif
 		return 1;
 	}
 	return 0;
