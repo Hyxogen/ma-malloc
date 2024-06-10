@@ -370,7 +370,7 @@ void ma_dump_chunk(const struct ma_hdr *chunk)
 
 	size_t size = ma_get_size(chunk);
 
-	const void *userptr = ma_mem_to_chunk(chunk);
+	const void *userptr = ma_chunk_to_mem(chunk);
 
 	eprint("%p: %p - %p: ", (void *)chunk, (void *)userptr,
 	       (void *)((unsigned char *)userptr + size));
