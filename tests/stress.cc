@@ -79,7 +79,7 @@ static void gen_memset(void* p, size_t idx, size_t n)
 
 static void gen_aligned_alloc()
 {
-	static std::uniform_int_distribution<> align_distr(5, 24);
+	static std::uniform_int_distribution<> align_distr(5, 16);
 	size_t size = gen_malloc_size();
 
 	size_t align = 1 << align_distr(gen);
@@ -109,7 +109,7 @@ static void gen_malloc()
 
 static void gen_alloc()
 {
-	static std::bernoulli_distribution bool_distr(0.8);
+	static std::bernoulli_distribution bool_distr(0.9);
 
 	if (bool_distr(gen))
 		gen_malloc();
