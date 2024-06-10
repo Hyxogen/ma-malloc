@@ -85,6 +85,7 @@ void ma_free(void *p)
 	ma_lock_arena(arena);
 
 	ma_assert_correct_arena(arena);
+	ma_maybe_perturb_free(p);
 	ma_free_no_lock(arena, p);
 	ma_assert_correct_arena(arena);
 

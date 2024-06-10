@@ -18,7 +18,8 @@ void *ma_calloc(size_t nmemb, size_t size)
 	if (p) {
 		struct ma_hdr *chunk = ma_mem_to_chunk(p);
 
-		// TODO huge allocations don't have to be zeroed
+		// watch out, the chunk might have been perturbed, so we don't
+		// know for sure if it has been zeroed
 		ft_memset(p, 0, ma_get_size(chunk));
 	}
 

@@ -68,6 +68,7 @@ void *ma_aligned_alloc(size_t align, size_t size)
 	ma_lock_arena(arena);
 
 	void *p = ma_aligned_alloc_no_lock(arena, align, size);
+	ma_maybe_perturb_alloc(p);
 
 	ma_unlock_arena(arena);
 

@@ -161,8 +161,14 @@ struct ma_arena {
 _Static_assert(MA_BIN_COUNT <= sizeof(uint64_t) * 2 * CHAR_BIT,
 	       "required to use fast bin bitmaps");
 
+struct ma_opts {
+	bool perturb;
+	uint8_t perturb_byte;
+};
+
 struct ma_state {
 	struct ma_arena main_arena;
+	struct ma_opts opts;
 	bool initialized;
 };
 
@@ -194,6 +200,7 @@ struct ma_hdr *ma_next_hdr(const void *chunk);
 struct ma_hdr *ma_prev_hdr(const void *chunk);
 bool ma_is_sentinel(const struct ma_hdr *chunk);
 enum ma_size_class ma_get_size_class(const struct ma_hdr *hdr);
+void ma_chunk_fill(struct ma_hdr *chunk, uint8_t byte);
 
 void ma_check_pointer(void *p);
 
@@ -201,6 +208,8 @@ uint64_t ma_ctlz(uint64_t n);
 void ma_maybe_initialize(void);
 size_t ma_pad_requestsize(size_t size);
 enum ma_size_class ma_get_size_class_from_size(size_t size);
+void ma_maybe_perturb_alloc(void *p);
+void ma_maybe_perturb_free(void *p);
 
 // returns false if an allocation should return NULL, might set errno
 bool ma_check_requestsize(size_t n);
@@ -243,6 +252,7 @@ size_t ma_freelist_idx(const struct ma_hdr *hdr);
 void ma_init_arena(struct ma_arena *arena);
 struct ma_arena *ma_get_current_arena(void);
 struct ma_arena *ma_get_arena(const void *p);
+const struct ma_opts *ma_get_opts(void);
 
 void ma_dump_all_chunks(const struct ma_hdr *list, void *unused);
 void ma_dump_arena(const struct ma_arena *arena);

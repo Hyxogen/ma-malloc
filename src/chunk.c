@@ -1,5 +1,7 @@
 #include "ma/internal.h"
 
+#include <ft/string.h>
+
 static size_t ma_set_bit(size_t string, size_t mask, bool v)
 {
 	return (string & (~mask)) | mask * v;
@@ -313,6 +315,11 @@ void ma_dealloc_chunk(struct ma_arena *arena, struct ma_hdr *chunk)
 		ft_abort();
 	}
 	ma_debug_rem_chunk(&arena->debug, chunk);
+}
+
+void ma_chunk_fill(struct ma_hdr *hdr, uint8_t byte)
+{
+	ft_memset(ma_chunk_to_mem(hdr), byte, ma_get_size(hdr));
 }
 
 bool ma_is_user_chunk(const struct ma_hdr *chunk)

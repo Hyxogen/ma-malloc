@@ -65,6 +65,27 @@ uint64_t ma_ctlz(uint64_t x)
 #endif
 }
 
+void ma_maybe_perturb_alloc(void *p)
+{
+	if (!ma_get_opts()->perturb)
+		return;
+
+	struct ma_hdr *chunk = ma_mem_to_chunk(p);
+
+	uint8_t fill = ma_get_opts()->perturb_byte;
+	ma_chunk_fill(chunk, fill);
+}
+
+void ma_maybe_perturb_free(void *p)
+{
+	if (!ma_get_opts()->perturb)
+		return;
+
+	struct ma_hdr *chunk = ma_mem_to_chunk(p);
+	uint8_t fill = ma_get_opts()->perturb_byte;
+	ma_chunk_fill(chunk, fill);
+}
+
 enum ma_size_class ma_get_size_class_from_size(size_t size)
 {
 	if (size <= MA_MAX_SMALL_SIZE)

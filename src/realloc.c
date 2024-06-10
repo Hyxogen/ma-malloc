@@ -44,6 +44,7 @@ static void *ma_realloc_shrink(struct ma_arena *arena, struct ma_hdr *old_chunk,
 			ma_unlink_chunk_any(arena, nextnext);
 			next = ma_merge_chunks(next, nextnext);
 		}
+		ma_maybe_perturb_free(ma_chunk_to_mem(next));
 		ma_append_chunk_any(arena, next);
 	}
 	return ma_chunk_to_mem(old_chunk);
@@ -68,13 +69,20 @@ static void *ma_realloc_grow(struct ma_arena *arena, struct ma_hdr *old_chunk,
 		 ma_get_size_class_from_size(old_size + ma_get_size(next))))
 		return ma_realloc_slow(arena, old_chunk, new_size);
 
+	size_t grew = 0;
 	ma_unlink_chunk_any(arena, next);
 	if (ma_should_split(next, needed)) {
 		ma_append_chunk_any(arena, ma_split_chunk(next, needed));
-		ma_set_size(old_chunk, old_size + needed + MA_HEADER_SIZE);
+		grew = needed + MA_HEADER_SIZE;
 	} else {
-		ma_set_size(old_chunk,
-			    old_size + ma_get_size(next) + MA_HEADER_SIZE);
+		grew = ma_get_size(next) + MA_HEADER_SIZE;
+	}
+	ma_set_size(old_chunk, old_size + grew);
+
+	if (ma_get_opts()->perturb) {
+		ft_memset((unsigned char *)ma_chunk_to_mem(old_chunk) +
+			      old_size,
+			  ma_get_opts()->perturb_byte, grew);
 	}
 
 	ma_set_pinuse(ma_next_hdr(old_chunk), true);

@@ -88,6 +88,7 @@ void *ma_malloc(size_t n)
 
 	ma_assert_correct_arena(arena);
 	void *p = ma_malloc_no_lock(arena, n);
+	ma_maybe_perturb_alloc(p);
 	ma_assert_correct_arena(arena);
 
 	ma_unlock_arena(arena);

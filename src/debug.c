@@ -1,6 +1,7 @@
 #include "ma/internal.h"
 
 #include <errno.h>
+#include <ft/ctype.h>
 #include <signal.h>
 
 #if MA_TRACES
