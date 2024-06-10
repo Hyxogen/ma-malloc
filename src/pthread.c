@@ -1,5 +1,6 @@
-#if MA_USE_PTHREAD
 #include "ma/internal.h"
+
+#if MA_USE_PTHREAD
 #include <pthread.h>
 
 int ma_init_mutex(ma_mtx *mtx)
@@ -13,7 +14,7 @@ int ma_lock_mutex(ma_mtx *mtx)
 
 }
 
-int ma_unlock_mtx(ma_mtx *mtx)
+int ma_unlock_mutex(ma_mtx *mtx)
 {
 	return pthread_mutex_unlock(mtx);
 }
