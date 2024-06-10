@@ -97,6 +97,15 @@ static void ma_show_alloc_mem_list(const struct ma_hdr *hdr, void *ctx)
 	}
 }
 
+static void ma_show_alloc_mem_no_lock(const struct ma_arena *arena)
+{
+	size_t total = 0;
+
+	ma_debug_for_each(&arena->debug, ma_show_alloc_mem_list, &total);
+
+	ft_printf("Total : %zu bytes\n", total);
+}
+
 void ma_show_alloc_mem(void)
 {
 	ma_maybe_initialize();
@@ -105,11 +114,7 @@ void ma_show_alloc_mem(void)
 
 	ma_lock_arena(arena);
 
-	size_t total = 0;
-
-	ma_debug_for_each(&arena->debug, ma_show_alloc_mem_list, &total);
-
-	ft_printf("Total : %zu bytes\n", total);
+	ma_show_alloc_mem_no_lock(arena);
 
 	ma_unlock_arena(arena);
 }
