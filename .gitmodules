@@ -1,3 +1,3 @@
 [submodule "libft"]
 	path = libft
-	url = git@github.com:Hyxogen/libft.git
+	url = https://github.com/Hyxogen/libft.git
