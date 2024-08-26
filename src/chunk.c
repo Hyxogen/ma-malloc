@@ -16,8 +16,8 @@ void ma_set_size(struct ma_hdr *chunk, size_t newsize)
 
 size_t ma_get_size(const void *tag)
 {
-	size_t *hdr = (size_t *)tag;
-	return *hdr & MA_SIZE_MASK;
+	uint64_t *hdr = (uint64_t *)tag;
+	return (size_t) *hdr & MA_SIZE_MASK;
 }
 
 void ma_set_pinuse(struct ma_hdr *chunk, bool v)
