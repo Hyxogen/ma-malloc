@@ -50,12 +50,12 @@ else
 $(error "Unknown check '$(check)'. Available: all, simple, none")
 endif
 
-all: mandatory
+all: normal
 
 mandatory: CFLAGS += -DMA_SEGREGATED_BESTFIT=1 -DMA_TRACK_CHUNKS=1 -DMA_COMPILE_AS_LIBC=1
 mandatory: $(NAME)
 
-bonus: CFLAGS += FT_BONUS=1
+bonus: CFLAGS += -DFT_BONUS=1
 bonus: mandatory
 
 normal: CFLAGS += -DMA_SEGREGATED_BESTFIT=0 -DMA_COMPILE_AS_LIBC=1
