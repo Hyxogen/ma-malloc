@@ -29,11 +29,17 @@ compare_output() {
 	$@ > $THEIR_STDOUT 2> $THEIR_STDERR
 	THEIR_STATUS=$?
 
-	if [ "$MINE_STATUS" != "$THEIR_STATUS" ]; then
-		eprint "KO: exit codes do not match"
+	diff -q $MINE_STDERR $THEIR_STDERR >/dev/null
+	if [ $? != 0 ]; then
+		eprint "KO: stderr does not match"
 		eprint "command: $(escape $@)"
+		eprint "< mine"
+		eprint "> theirs"
+
+		diff $MINE_STDERR $THEIR_STDERR --color
 		exit 1
 	fi
+
 
 	diff -q $MINE_STDOUT $THEIR_STDOUT >/dev/null
 	if [ $? != 0 ]; then
@@ -46,16 +52,12 @@ compare_output() {
 		exit 1
 	fi
 
-	diff -q $MINE_STDERR $THEIR_STDERR >/dev/null
-	if [ $? != 0 ]; then
-		eprint "KO: stderr does not match"
+	if [ "$MINE_STATUS" != "$THEIR_STATUS" ]; then
+		eprint "KO: exit codes do not match. mine=$MINE_STATUS theirs=$THEIR_STATUS"
 		eprint "command: $(escape $@)"
-		eprint "< mine"
-		eprint "> theirs"
-
-		diff $MINE_STDERR $THEIR_STDERR --color
 		exit 1
 	fi
+
 
 	rm -f $MINE_STDOUT
 	rm -f $MINE_STDERR
