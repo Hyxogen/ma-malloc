@@ -50,16 +50,14 @@ else
 $(error "Unknown check '$(check)'. Available: all, simple, none")
 endif
 
-all: normal
+normal: CFLAGS += -DMA_SEGREGATED_BESTFIT=0 -DMA_COMPILE_AS_LIBC=1
+normal: $(NAME)
 
 mandatory: CFLAGS += -DMA_SEGREGATED_BESTFIT=1 -DMA_TRACK_CHUNKS=1 -DMA_COMPILE_AS_LIBC=1
 mandatory: $(NAME)
 
 bonus: CFLAGS += -DFT_BONUS=1
 bonus: mandatory
-
-normal: CFLAGS += -DMA_SEGREGATED_BESTFIT=0 -DMA_COMPILE_AS_LIBC=1
-normal: $(NAME)
 
 $(NAME): $(OBJ_FILES) $(LIBFT_LIB)
 	@echo $(SRC_FILES)
@@ -95,6 +93,26 @@ re:
 	@${MAKE} fclean
 	@${MAKE}
 
+help:
+	@echo "rules:"
+	@echo "  help        this help message"
+	@echo "  normal      build fully functional malloc library"
+	@echo "  mandatory   build malloc as required by the 42 subject"
+	@echo "  stress      build malloc stress tester"
+	@echo "  fmt         format the source code according to .clang-format"
+	@echo "  clean       remove all intermediary files"
+	@echo "  fclean      remove all intermediary files as well as built programs/libraries"
+	@echo "  re          fclean and then make"
+	@echo ""
+	@echo "arguments:"
+	@echo "  config="
+	@echo "    debug     few optimizations enabled, with debug symbols, useful for debugging"
+	@echo "    release   optimizations enabled, with debug symbols, useful for testing"
+	@echo "    distr     all optimizations enabled, no debug symbols, meant for deployment"
+	@echo "  check="
+	@echo "    all       enable all self tests, really slow, useful for debugging"
+	@echo "    simple    enable only cheap self tests, slightly slower, useful for testing"
+	@echo "    none      disable all self tests, fastest, useful for deployment"
 
 -include $(DEP_FILES)
-.PHONY: all clean fclean re debug bonus mandatory normal
+.PHONY: all clean fclean re debug bonus mandatory normal help
