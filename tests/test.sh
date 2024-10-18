@@ -1,7 +1,10 @@
 #!/bin/bash
 
-LIB_NAME=malloc.so
+HOSTTYPE="$(uname -m)_$(uname -s)"
+LIB_NAME="libft_malloc_$HOSTTYPE.so"
 LIB_DIR=$PWD
+
+file "$LIB_DIR/$LIB_NAME"
 
 escape() {
 	echo "$@" | sed 's/"/\\"/g'
