@@ -1,0 +1,33 @@
+name: test ma-malloc
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  test-programs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout repo
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: build library
+      run: make check=all
+    - name: run tests
+      run: ./tests/test.sh
+  stress-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout repo
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: build stress tester
+      run: make stress check=all
+    - name: run stress tester
+      run: ./stress 60
