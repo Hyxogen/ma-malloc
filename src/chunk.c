@@ -1,6 +1,9 @@
 #include "ma/internal.h"
 
-#include <ft/string.h>
+#include <libc/assert.h>
+#include <libc/stdio.h>
+#include <libc/stdlib.h>
+#include <libc/string.h>
 
 static size_t ma_set_bit(size_t string, size_t mask, bool v)
 {
@@ -9,7 +12,7 @@ static size_t ma_set_bit(size_t string, size_t mask, bool v)
 
 void ma_set_size(struct ma_hdr *chunk, size_t newsize)
 {
-	ft_assert(!(newsize & MA_FLAGS_MASK));
+	ma_assert(!(newsize & MA_FLAGS_MASK));
 
 	chunk->tag = (chunk->tag & MA_FLAGS_MASK) | newsize;
 }
@@ -62,13 +65,13 @@ bool ma_is_sentinel(const struct ma_hdr *chunk)
 
 enum ma_size_class ma_get_size_class(const struct ma_hdr *hdr)
 {
-	ft_assert(!(ma_is_small(hdr) && ma_is_large(hdr)) &&
+	ma_assert(!(ma_is_small(hdr) && ma_is_large(hdr)) &&
 		  "corrupted or invalid chunk");
 	if (ma_is_small(hdr))
 		return MA_SMALL;
 	if (ma_is_large(hdr))
 		return MA_LARGE;
-	ft_assert(ma_is_huge(hdr));
+	ma_assert(ma_is_huge(hdr));
 	return MA_HUGE;
 }
 
@@ -83,7 +86,7 @@ struct ma_hdr *ma_prev_hdr(const void *chunk)
 {
 #ifndef FT_NDEBUG
 	struct ma_hdr *hdr = (struct ma_hdr *)chunk;
-	ft_assert(!ma_is_pinuse(hdr));
+	ma_assert(!ma_is_pinuse(hdr));
 #endif
 
 	size_t prev_size = ma_get_size((unsigned char *)chunk - MA_FOOTER_SIZE);
@@ -104,7 +107,7 @@ static void ma_set_ftr(struct ma_hdr *chunk)
 
 bool ma_is_inuse(const struct ma_hdr *hdr)
 {
-	ft_assert(!ma_is_sentinel(hdr));
+	ma_assert(!ma_is_sentinel(hdr));
 	return ma_is_pinuse(ma_next_hdr(hdr));
 }
 
@@ -137,7 +140,7 @@ void ma_make_sentinel(struct ma_hdr *chunk, enum ma_size_class class,
 struct ma_hdr *ma_init_chunk(struct ma_hdr *chunk, enum ma_size_class class,
 			     size_t size, bool pinuse)
 {
-	ft_assert(size >= MA_MIN_ALLOC_SIZE);
+	ma_assert(size >= MA_MIN_ALLOC_SIZE);
 
 	ma_set_pinuse(chunk, pinuse);
 	ma_set_small(chunk, class == MA_SMALL);
@@ -160,7 +163,7 @@ struct ma_hdr *ma_find_bestfit(const struct ma_hdr *list, size_t size)
 		return NULL;
 
 	do {
-		ft_assert(!ma_is_inuse(cur));
+		ma_assert(!ma_is_inuse(cur));
 
 		size_t chunk_size = ma_get_size(cur);
 
@@ -172,7 +175,7 @@ struct ma_hdr *ma_find_bestfit(const struct ma_hdr *list, size_t size)
 				best = cur;
 		}
 
-		ft_assert(cur->next);
+		ma_assert(cur->next);
 		cur = cur->next;
 	} while (cur != list);
 
@@ -181,9 +184,9 @@ struct ma_hdr *ma_find_bestfit(const struct ma_hdr *list, size_t size)
 
 struct ma_hdr *ma_merge_chunks(struct ma_hdr *a, struct ma_hdr *b)
 {
-	ft_assert(a != b);
+	ma_assert(a != b);
 #if MA_SEGREGATED_BESTFIT
-	ft_assert(ma_get_size_class(a) == ma_get_size_class(b));
+	ma_assert(ma_get_size_class(a) == ma_get_size_class(b));
 #endif
 
 	struct ma_hdr *first = a < b ? a : b;
@@ -199,11 +202,11 @@ struct ma_hdr *ma_merge_chunks(struct ma_hdr *a, struct ma_hdr *b)
 
 struct ma_hdr *ma_split_chunk(struct ma_hdr *chunk, size_t newsize)
 {
-	ft_assert(ma_get_size(chunk) >= newsize);
+	ma_assert(ma_get_size(chunk) >= newsize);
 	size_t rem = ma_get_size(chunk) - newsize;
 
-	ft_assert(rem >= MA_MIN_CHUNK_SIZE);
-	ft_assert(!ma_is_inuse(chunk));
+	ma_assert(rem >= MA_MIN_CHUNK_SIZE);
+	ma_assert(!ma_is_inuse(chunk));
 
 	// TODO in theory only the size in the header and the footer have to be
 	// reset, the _small, _large and _pinuse flags don't have to be set (for
@@ -244,7 +247,7 @@ void ma_maybe_split(struct ma_arena *arena, struct ma_hdr *chunk,
 
 void ma_append_chunk(struct ma_hdr **list, struct ma_hdr *chunk)
 {
-	ft_assert(!ma_is_inuse(chunk));
+	ma_assert(!ma_is_inuse(chunk));
 
 	if (!*list) {
 		*list = chunk;
@@ -260,7 +263,7 @@ void ma_append_chunk(struct ma_hdr **list, struct ma_hdr *chunk)
 
 void ma_unlink_chunk(struct ma_hdr **list, struct ma_hdr *chunk)
 {
-	ft_assert(*list);
+	ma_assert(*list);
 
 	if (chunk->next != chunk) {
 		struct ma_hdr *next = chunk->next;
@@ -306,20 +309,20 @@ struct ma_hdr *ma_alloc_chunk(struct ma_arena *arena, size_t minsize,
 
 void ma_dealloc_chunk(struct ma_arena *arena, struct ma_hdr *chunk)
 {
-	ft_assert(ma_is_sentinel(ma_next_hdr(chunk)) &&
+	ma_assert(ma_is_sentinel(ma_next_hdr(chunk)) &&
 		  "partially deallocate should not happen");
 	void *start = (void *)MA_ALIGN_DOWN(chunk, ma_sysalloc_granularity());
 
 	if (!ma_sysfree(start, ma_get_size(chunk) + MA_CHUNK_ALLOC_PADDING)) {
-		ft_perror("ma_sysfree");
-		ft_abort();
+		ma_perror("ma_sysfree");
+		ma_abort();
 	}
 	ma_debug_rem_chunk(&arena->debug, chunk);
 }
 
 void ma_chunk_fill(struct ma_hdr *hdr, uint8_t byte)
 {
-	ft_memset(ma_chunk_to_mem(hdr), byte, ma_get_size(hdr));
+	ma_memset(ma_chunk_to_mem(hdr), byte, ma_get_size(hdr));
 }
 
 bool ma_is_user_chunk(const struct ma_hdr *chunk)
@@ -350,7 +353,7 @@ void ma_check_user_chunk(const struct ma_hdr *hdr)
 {
 	if (!ma_is_user_chunk(hdr)) {
 		eprint("%p: invalid chunk\n", (void *)hdr);
-		ft_abort();
+		ma_abort();
 	}
 }
 
@@ -408,37 +411,37 @@ void ma_dump_all_chunks(const struct ma_hdr *list, void *unused)
 #if !defined(FT_NDEBUG) && MA_CHECK_SELF
 void ma_assert_correct_chunk(const struct ma_hdr *chunk)
 {
-	ft_assert((uintptr_t)chunk & MA_HALF_MALLOC_ALIGN);
+	ma_assert((uintptr_t)chunk & MA_HALF_MALLOC_ALIGN);
 
 	if (ma_is_sentinel(chunk))
 		return;
 
-	ft_assert(!(ma_is_small(chunk) && ma_is_large(chunk)));
+	ma_assert(!(ma_is_small(chunk) && ma_is_large(chunk)));
 
 	struct ma_hdr *next = ma_next_hdr(chunk);
 
 	if (ma_is_inuse(chunk)) {
-		ft_assert(ma_is_pinuse(next));
+		ma_assert(ma_is_pinuse(next));
 	} else {
 		size_t ftr = *ma_get_ftr(chunk);
 		size_t hdr = *(size_t *)chunk;
 
-		ft_assert((ftr & ~MA_PINUSE_FLAG) == (hdr & ~MA_PINUSE_FLAG));
+		ma_assert((ftr & ~MA_PINUSE_FLAG) == (hdr & ~MA_PINUSE_FLAG));
 
 		if (!ma_is_huge(chunk)) {
-			ft_assert(chunk->next);
-			ft_assert(chunk->prev);
+			ma_assert(chunk->next);
+			ma_assert(chunk->prev);
 
-			ft_assert(chunk->next->prev == chunk);
-			ft_assert(chunk->prev->next == chunk);
+			ma_assert(chunk->next->prev == chunk);
+			ma_assert(chunk->prev->next == chunk);
 		}
 
-		ft_assert(ma_is_pinuse(chunk) && "chunks should be merged");
+		ma_assert(ma_is_pinuse(chunk) && "chunks should be merged");
 
-		ft_assert(ma_is_pinuse(next) == false);
+		ma_assert(ma_is_pinuse(next) == false);
 
 		if (!ma_is_sentinel(next))
-			ft_assert(ma_is_inuse(next) &&
+			ma_assert(ma_is_inuse(next) &&
 				  "chunks should be merged");
 	}
 }

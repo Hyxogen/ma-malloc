@@ -1,6 +1,6 @@
 #include "ma/internal.h"
 
-#include <ft/string.h>
+#include <libc/string.h>
 
 void *ma_calloc(size_t nmemb, size_t size)
 {
@@ -26,7 +26,7 @@ void *ma_calloc(size_t nmemb, size_t size)
 		
 		// FIXME: we don't have to be locked when zeroing the memory,
 		// only just when getting the size
-		ft_memset(p, 0, ma_get_size(chunk));
+		ma_memset(p, 0, ma_get_size(chunk));
 	}
 
 	ma_unlock_arena(arena);

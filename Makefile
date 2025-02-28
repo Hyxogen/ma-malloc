@@ -2,13 +2,26 @@ ifeq ($(HOSTTYPE),)
 	HOSTTYPE := $(shell uname -m)_$(shell uname -s)
 endif
 
+CFLAGS		:= -Wall -Wextra -MMD -Iinclude -fPIC -DMA_TRACES=0
+LFLAGS		:= -shared -lpthread
+
 NAME		:= libft_malloc_$(HOSTTYPE).so
 
 CC		?= cc
 CXX		?= c++
 
+ifndef use_libc
+	use_libc=no
+endif
+
+ifeq ($(use_libc), yes)
+LIBFT_DIR	:= 
+LIBFT_LIB	:=
+else
 LIBFT_DIR	:= libft
 LIBFT_LIB	:= $(LIBFT_DIR)/libft.a
+CFLAGS		+= -I$(LIBFT_DIR)/include
+endif
 
 SRC_DIR		:= src
 OBJ_DIR		:= build
@@ -21,9 +34,6 @@ DEP_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(DEP_DIR)/%.d,$(SRC_FILES))
 ifndef config
 	config	:= distr
 endif
-
-CFLAGS		:= -Wall -Wextra -MMD -Iinclude -I$(LIBFT_DIR)/include -fPIC -DMA_TRACES=0
-LFLAGS		:= -shared -lpthread
 
 ifeq ($(config),debug)
 	CFLAGS	+= -O0 -g3
@@ -55,7 +65,7 @@ normal: $(NAME)
 
 # It's better not to use this rule. It's just so it fits the requirements of the
 # subject.
-mandatory: CFLAGS += -DMA_SEGREGATED_BESTFIT=1 -DMA_TRACK_CHUNKS=1 -DMA_COMPILE_AS_LIBC=1
+mandatory: CFLAGS += -DMA_SEGREGATED_BESTFIT=1 -DMA_TRACK_CHUNKS=1 -DMA_COMPILE_AS_LIBC=1 -DMA_USE_LIBFT=1
 mandatory: $(NAME)
 
 # You found the bonus rule! Don't use it. It's useless

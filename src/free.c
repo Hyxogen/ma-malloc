@@ -1,6 +1,7 @@
 #include "ma/internal.h"
 
 #include <errno.h>
+#include <libc/stdlib.h>
 
 static struct ma_hdr *ma_maybe_merge(struct ma_arena *arena,
 				     struct ma_hdr *chunk)
@@ -63,7 +64,7 @@ void ma_free_no_lock(struct ma_arena *arena, void *p)
 
 	if (!ma_is_inuse(chunk)) {
 		eprint("free(): %p: invalid pointer\n", p);
-		ft_abort();
+		ma_abort();
 	}
 
 	ma_free_common(arena, chunk);

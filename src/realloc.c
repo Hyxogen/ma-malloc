@@ -1,6 +1,7 @@
 #include "ma/internal.h"
 
-#include <ft/string.h>
+#include <libc/assert.h>
+#include <libc/string.h>
 
 static void *ma_realloc_slow(struct ma_arena *arena, struct ma_hdr *old_chunk,
 			     size_t new_size)
@@ -10,7 +11,7 @@ static void *ma_realloc_slow(struct ma_arena *arena, struct ma_hdr *old_chunk,
 		void *oldp = ma_chunk_to_mem(old_chunk);
 		size_t old_size = ma_get_size(old_chunk);
 
-		ft_memcpy(newp, oldp,
+		ma_memcpy(newp, oldp,
 			  old_size < new_size ? old_size : new_size);
 		ma_free_no_lock(arena, oldp);
 	}
@@ -26,7 +27,7 @@ static void *ma_realloc_shrink(struct ma_arena *arena, struct ma_hdr *old_chunk,
 	}
 
 	size_t old_size = ma_get_size(old_chunk);
-	ft_assert(old_size >= new_size);
+	ma_assert(old_size >= new_size);
 
 	size_t rem = old_size - new_size;
 
@@ -55,7 +56,7 @@ static void *ma_realloc_grow(struct ma_arena *arena, struct ma_hdr *old_chunk,
 {
 	size_t old_size = ma_get_size(old_chunk);
 
-	ft_assert(old_size <= new_size);
+	ma_assert(old_size <= new_size);
 
 	size_t needed = ma_pad_requestsize(new_size - old_size);
 	enum ma_size_class chunk_class = ma_get_size_class(old_chunk);
@@ -80,7 +81,7 @@ static void *ma_realloc_grow(struct ma_arena *arena, struct ma_hdr *old_chunk,
 	ma_set_size(old_chunk, old_size + grew);
 
 	if (ma_get_opts()->perturb) {
-		ft_memset((unsigned char *)ma_chunk_to_mem(old_chunk) +
+		ma_memset((unsigned char *)ma_chunk_to_mem(old_chunk) +
 			      old_size,
 			  ma_get_opts()->perturb_byte, grew);
 	}
@@ -92,8 +93,8 @@ static void *ma_realloc_grow(struct ma_arena *arena, struct ma_hdr *old_chunk,
 static void *ma_realloc_no_lock(struct ma_arena *arena, void *p,
 				size_t new_size)
 {
-	ft_assert(p);
-	ft_assert(new_size > 0);
+	ma_assert(p);
+	ma_assert(new_size > 0);
 
 	new_size = ma_pad_requestsize(new_size);
 
@@ -129,7 +130,7 @@ void *ma_realloc(void *p, size_t new_size)
 	}
 #else
 	// resize to null is undefined behaviour in C23
-	ft_assert(new_size);
+	ma_assert(new_size);
 #endif
 
 	if (!ma_check_requestsize(new_size))

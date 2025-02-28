@@ -1,7 +1,7 @@
 #include "ma/internal.h"
 
 #include <errno.h>
-#include <ft/stdlib.h>
+#include <libc/stdlib.h>
 
 static struct ma_opts *ma_get_opts_mut(void)
 {
@@ -17,9 +17,9 @@ void ma_init_opts(void)
 	opts->perturb = false;
 
 	char *val;
-	if ((val = ft_getenv("MALLOC_PERTURB_"))) {
+	if ((val = ma_getenv("MALLOC_PERTURB_"))) {
 		char *end;
-		unsigned long long perturb = ft_strtoull(val, &end, 0);
+		unsigned long long perturb = ma_strtoull(val, &end, 0);
 
 		if (perturb != ULLONG_MAX && errno != ERANGE) {
 			opts->perturb = true;

@@ -1,5 +1,7 @@
 #include "ma/internal.h"
 
+#include <libc/assert.h>
+
 #if MA_SEGREGATED_BESTFIT
 #include <errno.h>
 #endif
@@ -7,7 +9,7 @@
 static void *ma_aligned_alloc_no_lock(struct ma_arena *arena, size_t align,
 				      size_t size)
 {
-	ft_assert(align > MA_MALLOC_ALIGN);
+	ma_assert(align > MA_MALLOC_ALIGN);
 
 	if (!ma_check_requestsize(size))
 		return NULL;
@@ -27,7 +29,7 @@ static void *ma_aligned_alloc_no_lock(struct ma_arena *arena, size_t align,
 			diff = alignedp - p;
 		}
 
-		ft_assert(diff >= MA_MIN_CHUNK_SIZE);
+		ma_assert(diff >= MA_MIN_CHUNK_SIZE);
 
 		struct ma_hdr *chunk = ma_mem_to_chunk(p);
 
@@ -36,8 +38,8 @@ static void *ma_aligned_alloc_no_lock(struct ma_arena *arena, size_t align,
 		    ma_split_chunk(chunk, diff - MA_HEADER_SIZE);
 		ma_set_inuse(aligned_chunk, true);
 
-		ft_assert(ma_get_size(aligned_chunk) >= size);
-		ft_assert(ma_chunk_to_mem(aligned_chunk) == alignedp);
+		ma_assert(ma_get_size(aligned_chunk) >= size);
+		ma_assert(ma_chunk_to_mem(aligned_chunk) == alignedp);
 
 		if (!ma_is_huge(chunk))
 			ma_append_chunk_any(arena, chunk);
@@ -74,6 +76,6 @@ void *ma_aligned_alloc(size_t align, size_t size)
 
 	ma_dump_print("void *tmp_%p = ma_aligned_alloc(%zu, %zu);\n", p, align,
 		      size);
-	ft_assert(!p || MA_IS_ALIGNED_TO(p, align));
+	ma_assert(!p || MA_IS_ALIGNED_TO(p, align));
 	return p;
 }

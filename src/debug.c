@@ -1,7 +1,8 @@
 #include "ma/internal.h"
 
 #include <errno.h>
-#include <ft/ctype.h>
+#include <libc/ctype.h>
+#include <libc/stdio.h>
 #include <signal.h>
 
 #if MA_TRACES
@@ -9,7 +10,7 @@
 #endif
 
 #if MA_TRACK_CHUNKS
-#include <ft/string.h>
+#include <libc/string.h>
 #endif
 
 #if FT_BONUS
@@ -22,7 +23,7 @@ struct show_alloc_mem_ctx {
 };
 
 // TODO implement in libft
-[[noreturn]] void ft_abort(void)
+[[noreturn]] void ma_abort(void)
 {
 #if FT_BONUS
 	abort();
@@ -34,18 +35,18 @@ struct show_alloc_mem_ctx {
 #endif
 }
 
-void ft_assert_impl(int pred, const char *predstr, const char *func,
+void ma_assert_impl(int pred, const char *predstr, const char *func,
 		    const char *file, int line)
 {
 	if (!pred) {
 		eprint("%s:%i: %s: Assertion '%s' failed.\n", file, line, func,
 		       predstr);
 		ma_dump();
-		ft_abort();
+		ma_abort();
 	}
 }
 
-char *ft_strerror(int err)
+char *ma_strerror(int err)
 {
 #if FT_BONUS
 	return strerror(err);
@@ -55,7 +56,7 @@ char *ft_strerror(int err)
 #endif
 }
 
-void ft_perror(const char *s)
+void ma_perror(const char *s)
 {
 #if FT_BONUS
 	perror(s);
@@ -64,7 +65,7 @@ void ft_perror(const char *s)
 		eprint("%s", s);
 	else
 		eprint("mamalloc");
-	eprint(": %s\n", ft_strerror(errno));
+	eprint(": %s\n", ma_strerror(errno));
 #endif
 }
 
@@ -80,29 +81,29 @@ static void ma_hexdump_to(int fd, const void *p, size_t n, int width)
 	const unsigned char *s = (const unsigned char *)p;
 	for (size_t offset = 0; offset < n; offset += 16) {
 		if (offset)
-			ft_dprintf(fd, "\n");
-		ft_dprintf(fd, "%0*zu:", width, offset);
+			ma_dprintf(fd, "\n");
+		ma_dprintf(fd, "%0*zu:", width, offset);
 
 		for (size_t i = 0; i < 16; ++i) {
 			if ((i % 2) == 0)
-				ft_dprintf(fd, " ");
+				ma_dprintf(fd, " ");
 
 			if (offset + i >= n)
-				ft_dprintf(fd, "  ");
+				ma_dprintf(fd, "  ");
 			else
-				ft_dprintf(fd, "%02hhx", s[offset + i]);
+				ma_dprintf(fd, "%02hhx", s[offset + i]);
 		}
 
-		ft_dprintf(fd, "  ");
+		ma_dprintf(fd, "  ");
 
 		for (size_t i = 0; i < 16 && offset + i < n; ++i) {
-			if (ft_isprint(s[offset + i]))
-				ft_dprintf(fd, "%c", s[offset + i]);
+			if (ma_isprint(s[offset + i]))
+				ma_dprintf(fd, "%c", s[offset + i]);
 			else
-				ft_dprintf(fd, ".");
+				ma_dprintf(fd, ".");
 		}
 	}
-	ft_dprintf(fd, "\n");
+	ma_dprintf(fd, "\n");
 }
 
 static void ma_show_alloc_mem_list(const struct ma_hdr *hdr, void *opaque)
@@ -114,23 +115,23 @@ static void ma_show_alloc_mem_list(const struct ma_hdr *hdr, void *opaque)
 
 	switch (ma_get_size_class(hdr)) {
 	case MA_SMALL:
-		ft_printf("TINY");
+		ma_printf("TINY");
 		break;
 	case MA_LARGE:
-		ft_printf("SMALL");
+		ma_printf("SMALL");
 		break;
 	case MA_HUGE:
 		width = -1;
-		ft_printf("LARGE");
+		ma_printf("LARGE");
 	}
-	ft_printf(" : 0x%lX\n", (unsigned long)hdr);
+	ma_printf(" : 0x%lX\n", (unsigned long)hdr);
 
 	while (!ma_is_sentinel(hdr)) {
 		if (ma_is_inuse(hdr)) {
 			void *p = ma_chunk_to_mem(hdr);
 			size_t size = ma_get_size(hdr);
 
-			ft_printf(
+			ma_printf(
 			    "0x%lX - 0x%lX : %zu bytes\n", (unsigned long)p,
 			    (unsigned long)((unsigned char *)p + size), size);
 
@@ -150,7 +151,7 @@ static void ma_show_alloc_mem_no_lock(const struct ma_arena *arena,
 
 	ma_debug_for_each(&arena->debug, ma_show_alloc_mem_list, &ctx);
 
-	ft_printf("Total : %zu bytes\n", ctx.total);
+	ma_printf("Total : %zu bytes\n", ctx.total);
 }
 
 void ma_show_alloc_mem(bool hexdump)
@@ -210,7 +211,7 @@ void ma_debug_add_chunk(struct ma_debug *debug, const struct ma_hdr *chunk)
 		}
 
 		if (debug->capacity > 0) {
-			ft_memcpy(new_entries, debug->entries,
+			ma_memcpy(new_entries, debug->entries,
 				  sizeof(*debug->entries) * debug->num_entries);
 			ma_sysfree(debug->entries, sizeof(*debug->entries) *
 						       debug->num_entries);
@@ -254,7 +255,7 @@ static void ma_get_prog_name(void)
 {
 	int fd = open("/proc/self/cmdline", O_RDONLY);
 	if (fd < 0) {
-		ft_perror("open");
+		ma_perror("open");
 		abort();
 	}
 
@@ -271,11 +272,11 @@ void ma_maybe_init_dump(void)
 	ma_get_prog_name();
 
 	char dump_name[512];
-	ft_snprintf(dump_name, sizeof(dump_name), "%s-dump.txt", ma_prog_name);
+	ma_snprintf(dump_name, sizeof(dump_name), "%s-dump.txt", ma_prog_name);
 
 	ma_dump_fd = open(dump_name, O_CREAT | O_TRUNC | O_WRONLY, 0777);
 	if (ma_dump_fd < 0) {
-		ft_perror("open");
+		ma_perror("open");
 		abort();
 	}
 }
@@ -286,7 +287,7 @@ __attribute__((destructor)) static void ma_close_dump(void)
 		return;
 
 	if (close(ma_dump_fd))
-		ft_perror("close");
+		ma_perror("close");
 }
 
 #endif

@@ -1,11 +1,15 @@
 #include "ma/internal.h"
 
+#include <libc/assert.h>
+#include <libc/stdlib.h>
+#include <libc/string.h>
+
 void ma_init_arena(struct ma_arena *arena)
 {
 	int rc;
 	if ((rc = ma_init_mutex(&arena->mtx))) {
-		eprint("ma_init_mutex: %s\n", ft_strerror(rc));
-		ft_abort();
+		eprint("ma_init_mutex: %s\n", ma_strerror(rc));
+		ma_abort();
 	}
 
 	ma_init_debug(&arena->debug);
@@ -15,8 +19,8 @@ void ma_lock_arena(struct ma_arena *arena)
 {
 	int rc;
 	if ((rc = ma_lock_mutex(&arena->mtx))) {
-		eprint("ma_lock_mutex: %s\n", ft_strerror(rc));
-		ft_abort();
+		eprint("ma_lock_mutex: %s\n", ma_strerror(rc));
+		ma_abort();
 	}
 }
 
@@ -24,16 +28,16 @@ void ma_unlock_arena(struct ma_arena *arena)
 {
 	int rc;
 	if ((rc = ma_unlock_mutex(&arena->mtx))) {
-		eprint("ma_unlock_mutex: %s\n", ft_strerror(rc));
-		ft_abort();
+		eprint("ma_unlock_mutex: %s\n", ma_strerror(rc));
+		ma_abort();
 	}
 }
 
 size_t ma_small_binidx(size_t size)
 {
-	ft_assert(size >= MA_MIN_ALLOC_SIZE);
+	ma_assert(size >= MA_MIN_ALLOC_SIZE);
 	size -= MA_MIN_ALLOC_SIZE;
-	ft_assert(MA_IS_MULTIPLE_OF(size, MA_SMALLBIN_STEP));
+	ma_assert(MA_IS_MULTIPLE_OF(size, MA_SMALLBIN_STEP));
 	return size / MA_SMALLBIN_STEP;
 }
 
@@ -42,7 +46,7 @@ size_t ma_freelist_idx_from_size(size_t size)
 #if MA_SEGREGATED_BESTFIT
 	if (size <= MA_MAX_SMALL_SIZE)
 		return 0;
-	ft_assert(size <= MA_MAX_LARGE_SIZE);
+	ma_assert(size <= MA_MAX_LARGE_SIZE);
 	return 1;
 #else
 	(void)size;
@@ -55,7 +59,7 @@ size_t ma_freelist_idx(const struct ma_hdr *hdr)
 #if MA_SEGREGATED_BESTFIT
 	if (ma_is_small(hdr))
 		return 0;
-	ft_assert(ma_is_large(hdr));
+	ma_assert(ma_is_large(hdr));
 	return 1;
 #else
 	(void)hdr;
@@ -65,7 +69,7 @@ size_t ma_freelist_idx(const struct ma_hdr *hdr)
 
 size_t ma_large_binidx(size_t n)
 {
-	ft_assert(n >= MA_MIN_LARGE_SIZE);
+	ma_assert(n >= MA_MIN_LARGE_SIZE);
 	n -= MA_MIN_LARGE_SIZE;
 
 	// TODO use macros for the magic values
@@ -86,11 +90,11 @@ size_t ma_large_binidx(size_t n)
 
 size_t ma_binidx(size_t size)
 {
-	ft_assert(size >= MA_MIN_SMALL_SIZE);
+	ma_assert(size >= MA_MIN_SMALL_SIZE);
 	if (size <= MA_MAX_SMALL_SIZE)
 		return ma_small_binidx(size);
-	ft_assert(size >= MA_MIN_LARGE_SIZE);
-	ft_assert(size <= MA_MAX_LARGE_SIZE);
+	ma_assert(size >= MA_MIN_LARGE_SIZE);
+	ma_assert(size <= MA_MAX_LARGE_SIZE);
 	return ma_large_binidx(size);
 }
 
@@ -116,7 +120,7 @@ static struct ma_hdr **ma_get_list(struct ma_arena *arena,
 				   const struct ma_hdr *chunk,
 				   size_t *selected_bin)
 {
-	ft_assert(!ma_is_huge(chunk));
+	ma_assert(!ma_is_huge(chunk));
 	size_t size = ma_get_size(chunk);
 
 	struct ma_hdr **list = NULL;
@@ -125,7 +129,7 @@ static struct ma_hdr **ma_get_list(struct ma_arena *arena,
 
 	if (ma_is_small(chunk)) {
 		if (size <= MA_MAX_SMALL_SIZE) {
-			ft_assert(size >= MA_MIN_SMALL_SIZE);
+			ma_assert(size >= MA_MIN_SMALL_SIZE);
 			size_t bin = ma_small_binidx(size);
 			list = &arena->bins[bin];
 			*selected_bin = bin;
@@ -134,7 +138,7 @@ static struct ma_hdr **ma_get_list(struct ma_arena *arena,
 		}
 	} else {
 		if (size <= MA_MAX_LARGE_SIZE) {
-			ft_assert(size >= MA_MIN_LARGE_SIZE);
+			ma_assert(size >= MA_MIN_LARGE_SIZE);
 			size_t bin = ma_large_binidx(size);
 			list = &arena->bins[bin];
 			*selected_bin = bin;
@@ -157,7 +161,7 @@ static struct ma_hdr **ma_get_list(struct ma_arena *arena,
 
 void ma_clear_bin(struct ma_arena *arena, size_t idx)
 {
-	ft_assert(idx < MA_BIN_COUNT);
+	ma_assert(idx < MA_BIN_COUNT);
 
 	size_t offset = idx % MA_BINMAPS_PER_ENTRY;
 	arena->bin_maps[idx / MA_BINMAPS_PER_ENTRY] ^= 1ull << offset;
@@ -165,7 +169,7 @@ void ma_clear_bin(struct ma_arena *arena, size_t idx)
 
 void ma_mark_bin(struct ma_arena *arena, size_t idx)
 {
-	ft_assert(idx < MA_BIN_COUNT);
+	ma_assert(idx < MA_BIN_COUNT);
 
 	size_t offset = idx % MA_SMALLBIN_COUNT;
 	arena->bin_maps[idx / MA_BINMAPS_PER_ENTRY] |= 1ull << offset;
@@ -252,17 +256,17 @@ void ma_assert_correct_bin(const struct ma_hdr *list, size_t min, size_t max)
 		return;
 
 	do {
-		ft_assert(!ma_is_inuse(cur));
+		ma_assert(!ma_is_inuse(cur));
 
 		size_t size = ma_get_size(cur);
-		ft_assert(size >= min);
-		ft_assert(size <= max);
+		ma_assert(size >= min);
+		ma_assert(size <= max);
 
-		ft_assert(cur->next);
-		ft_assert(cur->prev);
+		ma_assert(cur->next);
+		ma_assert(cur->prev);
 
-		ft_assert(cur->next->prev == cur);
-		ft_assert(cur->prev->next == cur);
+		ma_assert(cur->next->prev == cur);
+		ma_assert(cur->prev->next == cur);
 
 		cur = cur->next;
 	} while (cur != list);

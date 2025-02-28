@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <ft/stdio.h>
+#include <libc/stdio.h>
 #include <unistd.h>
 
 #ifndef MA_USE_PTHREAD
@@ -120,7 +120,7 @@ _Static_assert(MA_HEADER_SIZE == MA_HALF_MALLOC_ALIGN,
 #endif
 
 // TODO rename to ma_eprint
-#define eprint(...) ft_dprintf(STDERR_FILENO, __VA_ARGS__)
+#define eprint(...) ma_dprintf(STDERR_FILENO, __VA_ARGS__)
 
 #define MA_ALIGN_UP(x, boundary) (((x) + (boundary)-1) & ~((boundary)-1))
 #define MA_ALIGN_DOWN(x, boundary) (((uintptr_t)(x)) & ~((boundary)-1))
@@ -136,7 +136,7 @@ void ma_maybe_init_dump(void);
 #define ma_dump_print(...)                                                     \
 	do {                                                                   \
 		ma_maybe_init_dump();                                          \
-		ft_dprintf(ma_dump_fd, __VA_ARGS__);                           \
+		ma_dprintf(ma_dump_fd, __VA_ARGS__);                           \
 	} while (0)
 
 #else
@@ -292,11 +292,10 @@ void ma_assert_correct_all_chunks(const struct ma_hdr *list, void *unused);
 void ma_assert_correct_arena(const struct ma_arena *arena);
 #endif
 
-[[noreturn]] void ft_abort(void);
 void ft_assert_impl(int pred, const char *predstr, const char *func,
 		    const char *file, int line);
 char *ft_strerror(int err);
-void ft_perror(const char *s);
+void ma_perror(const char *s);
 
 int ma_sysalloc_granularity(void);
 void *ma_sysalloc(size_t size);

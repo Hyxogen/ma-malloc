@@ -1,5 +1,7 @@
 #include "ma/internal.h"
 
+#include <libc/assert.h>
+
 static struct ma_hdr *ma_malloc_from_bins(struct ma_arena *arena, size_t n)
 {
 	struct ma_hdr **list;
@@ -7,7 +9,7 @@ static struct ma_hdr *ma_malloc_from_bins(struct ma_arena *arena, size_t n)
 
 	if (!chunk)
 		return NULL;
-	ft_assert(list);
+	ma_assert(list);
 
 	ma_unlink_chunk(list, chunk);
 	ma_maybe_split(arena, chunk, n);
@@ -35,7 +37,7 @@ static struct ma_hdr *ma_malloc_from_new_chunk(struct ma_arena *arena, size_t n)
 	if (!chunk)
 		return NULL;
 
-	ft_assert(ma_should_split(chunk, n));
+	ma_assert(ma_should_split(chunk, n));
 
 	struct ma_hdr *rem = ma_split_chunk(chunk, n);
 	ma_append_chunk_any(arena, rem);
@@ -93,7 +95,7 @@ void *ma_malloc(size_t n)
 
 	ma_unlock_arena(arena);
 
-	ft_assert(!p || MA_IS_ALIGNED_TO(p, MA_MALLOC_ALIGN));
+	ma_assert(!p || MA_IS_ALIGNED_TO(p, MA_MALLOC_ALIGN));
 
 	ma_dump_print("void *tmp_%p = ma_malloc(%zu);\n", p, n);
 	return p;
