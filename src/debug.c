@@ -1,8 +1,10 @@
 #include "ma/internal.h"
 
 #include <errno.h>
+#include <libc/internal.h>
 #include <libc/ctype.h>
 #include <libc/stdio.h>
+#include <libc/string.h>
 #include <signal.h>
 
 #if MA_TRACES
@@ -46,6 +48,7 @@ void ma_assert_impl(int pred, const char *predstr, const char *func,
 	}
 }
 
+#if MA_USE_LIBFT
 char *ma_strerror(int err)
 {
 #if FT_BONUS
@@ -55,6 +58,7 @@ char *ma_strerror(int err)
 	return "no error information because of mandatory mode";
 #endif
 }
+#endif
 
 void ma_perror(const char *s)
 {
