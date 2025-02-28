@@ -3,7 +3,7 @@ ifeq ($(HOSTTYPE),)
 endif
 
 CFLAGS		:= -Wall -Wextra -MMD -Iinclude -fPIC -DMA_TRACES=0
-LFLAGS		:= -shared -lpthread
+LFLAGS		:= -shared
 
 NAME		:= libft_malloc_$(HOSTTYPE).so
 
@@ -65,7 +65,8 @@ normal: $(NAME)
 
 # It's better not to use this rule. It's just so it fits the requirements of the
 # subject.
-mandatory: CFLAGS += -DMA_SEGREGATED_BESTFIT=1 -DMA_TRACK_CHUNKS=1 -DMA_COMPILE_AS_LIBC=1 -DMA_USE_LIBFT=1
+mandatory: CFLAGS += -DMA_SEGREGATED_BESTFIT=1 -DMA_TRACK_CHUNKS=1 -DMA_COMPILE_AS_LIBC=1 -DMA_USE_LIBFT=1 -DMA_USE_THREADS=MA_PTHREAD_THREADS
+mandatory: LFLAGS += -lpthread
 mandatory: $(NAME)
 
 # You found the bonus rule! Don't use it. It's useless

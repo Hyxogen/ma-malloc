@@ -5,7 +5,10 @@
 #include <ma/libc/ctype.h>
 #include <ma/libc/stdio.h>
 #include <ma/libc/string.h>
+
+#if MA_USE_THREADS == MA_PTHREAD_THREADS
 #include <signal.h>
+#endif
 
 #if MA_TRACES
 #include <fcntl.h>
@@ -29,11 +32,18 @@ struct show_alloc_mem_ctx {
 {
 #if FT_BONUS
 	abort();
-#else
+#elif MA_USE_PTHREAD == MA_C11_THREADS
+	thrd_exit(1);
+#elif MA_USE_THREADS == MA_PTHREAD_THREADS
 	pthread_kill(pthread_self(), SIGABRT);
 	pthread_kill(pthread_self(), SIGKILL);
 
 	__builtin_unreachable();
+#else
+	/* Welp... */
+	eprint("could not abort... halting instead\n");
+	while (1)
+		continue;
 #endif
 }
 
