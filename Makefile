@@ -53,9 +53,15 @@ endif
 normal: CFLAGS += -DMA_SEGREGATED_BESTFIT=0 -DMA_COMPILE_AS_LIBC=1
 normal: $(NAME)
 
+# It's better not to use this rule. It's just so it fits the requirements of the
+# subject.
 mandatory: CFLAGS += -DMA_SEGREGATED_BESTFIT=1 -DMA_TRACK_CHUNKS=1 -DMA_COMPILE_AS_LIBC=1
 mandatory: $(NAME)
 
+# You found the bonus rule! Don't use it. It's useless
+# It only really adds a few debug features (like dumping allocations) and just
+# adds more overhead
+# Don't use it
 bonus: CFLAGS += -DFT_BONUS=1
 bonus: mandatory
 
@@ -96,8 +102,8 @@ re:
 help:
 	@echo "rules:"
 	@echo "  help        this help message"
-	@echo "  normal      build fully functional malloc library"
-	@echo "  mandatory   build malloc as required by the 42 subject"
+	@echo "  normal      build fully functional malloc library (recommended)"
+	@echo "  mandatory   build malloc as required by the 42 subject (not recommended)"
 	@echo "  stress      build malloc stress tester"
 	@echo "  fmt         format the source code according to .clang-format"
 	@echo "  clean       remove all intermediary files"
