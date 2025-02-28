@@ -1,5 +1,5 @@
-#ifndef LIBC_ASSERT_H
-#define LIBC_ASSERT_H
+#ifndef MA_LIBC_ASSERT_H
+#define MA_LIBC_ASSERT_H
 
 #if MA_USE_LIBFT
 /* Libft doesn't have a ft_assert implementation for the same reasons it doesn't

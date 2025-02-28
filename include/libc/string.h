@@ -1,5 +1,5 @@
-#ifndef LIBC_STRING_H
-#define LIBC_STRING_H
+#ifndef MA_LIBC_STRING_H
+#define MA_LIBC_STRING_H
 
 #include <libc/internal.h>
 #include <stddef.h>
@@ -16,17 +16,17 @@ char *ma_strerror(int errnum);
 #else
 #include <string.h>
 
-inline char *ma_strerror(int errnum) { return LIBC_PREFIX(strerror)(errnum); }
+inline char *ma_strerror(int errnum) { return MA_LIBC_PREFIX(strerror)(errnum); }
 #endif
 
 inline void *ma_memcpy(void *dest, const void *src, size_t n)
 {
-	return LIBC_PREFIX(memcpy)(dest, src, n);
+	return MA_LIBC_PREFIX(memcpy)(dest, src, n);
 }
 
 inline void *ma_memset(void *dest, int c, size_t n)
 {
-	return LIBC_PREFIX(memset)(dest, c, n);
+	return MA_LIBC_PREFIX(memset)(dest, c, n);
 }
 
 #endif

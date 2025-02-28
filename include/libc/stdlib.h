@@ -1,5 +1,5 @@
-#ifndef LIBC_STDLIB_H
-#define LIBC_STDLIB_H
+#ifndef MA_LIBC_STDLIB_H
+#define MA_LIBC_STDLIB_H
 
 #include <libc/internal.h>
 
@@ -18,16 +18,16 @@ void ma_abort(void);
 [[noreturn]]
 inline void ma_abort(void)
 {
-	LIBC_PREFIX(abort)();
+	MA_LIBC_PREFIX(abort)();
 }
 #endif
 
-inline char *ma_getenv(const char *name) { return LIBC_PREFIX(getenv)(name); }
+inline char *ma_getenv(const char *name) { return MA_LIBC_PREFIX(getenv)(name); }
 
 inline unsigned long long ma_strtoull(const char *restrict nptr,
 				      char **restrict endptr, int base)
 {
-	return LIBC_PREFIX(strtoull)(nptr, endptr, base);
+	return MA_LIBC_PREFIX(strtoull)(nptr, endptr, base);
 }
 
 #endif

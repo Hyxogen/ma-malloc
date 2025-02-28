@@ -1,5 +1,5 @@
-#ifndef LIBC_STDIO_H
-#define LIBC_STDIO_H
+#ifndef MA_LIBC_STDIO_H
+#define MA_LIBC_STDIO_H
 
 #include <libc/internal.h>
 
@@ -16,7 +16,7 @@ static inline int ma_printf(const char *restrict format, ...)
 	va_list args;
 
 	va_start(args, format);
-	int rc = LIBC_PREFIX(vprintf)(format, args);
+	int rc = MA_LIBC_PREFIX(vprintf)(format, args);
 	va_end(args);
 	return rc;
 }
@@ -26,7 +26,7 @@ static inline int ma_dprintf(int fd, const char *restrict format, ...)
 	va_list args;
 
 	va_start(args, format);
-	int rc = LIBC_PREFIX(vdprintf)(fd, format, args);
+	int rc = MA_LIBC_PREFIX(vdprintf)(fd, format, args);
 	va_end(args);
 	return rc;
 }
