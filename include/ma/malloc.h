@@ -2,6 +2,7 @@
 #define FT_MALLOC_H
 
 #include <stddef.h>
+#include <ma/internal.h>
 
 void *ma_malloc(size_t n);
 void ma_free(void *p);

@@ -31,7 +31,7 @@
 #endif
 
 #ifndef MA_COMPILE_AS_LIBC
-#define MA_COMPILE_AS_LIBC 0
+#define MA_COMPILE_AS_LIBC 1
 #endif
 
 #ifndef MA_TRACES
