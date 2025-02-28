@@ -1,7 +1,7 @@
 #include "ma/internal.h"
 
 #include <errno.h>
-#include <libc/stdlib.h>
+#include <ma/libc/stdlib.h>
 
 // At the moment, the get_current_arena and get_arena functions don't do
 // anything special, these are just placeholder functions for when I want to add

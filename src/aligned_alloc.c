@@ -1,6 +1,6 @@
 #include "ma/internal.h"
 
-#include <libc/assert.h>
+#include <ma/libc/assert.h>
 
 #if MA_SEGREGATED_BESTFIT
 #include <errno.h>

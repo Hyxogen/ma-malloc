@@ -1,6 +1,6 @@
 #include "ma/internal.h"
 
-#include <libc/assert.h>
+#include <ma/libc/assert.h>
 
 static struct ma_hdr *ma_malloc_from_bins(struct ma_arena *arena, size_t n)
 {

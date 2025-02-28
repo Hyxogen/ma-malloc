@@ -1,7 +1,7 @@
 #ifndef MA_LIBC_CTYPE_H
 #define MA_LIBC_CTYPE_H
 
-#include <libc/internal.h>
+#include <ma/libc/internal.h>
 
 #if MA_USE_LIBFT
 #include <ft/ctype.h>

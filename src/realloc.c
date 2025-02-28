@@ -1,7 +1,7 @@
 #include "ma/internal.h"
 
-#include <libc/assert.h>
-#include <libc/string.h>
+#include <ma/libc/assert.h>
+#include <ma/libc/string.h>
 
 static void *ma_realloc_slow(struct ma_arena *arena, struct ma_hdr *old_chunk,
 			     size_t new_size)

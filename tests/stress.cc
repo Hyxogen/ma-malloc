@@ -1,5 +1,5 @@
 extern "C" {
-#include "malloc.h"
+#include "ma/malloc.h"
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>

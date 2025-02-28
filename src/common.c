@@ -1,8 +1,8 @@
 #include "ma/internal.h"
 
 #include <errno.h>
-#include <libc/assert.h>
-#include <libc/stdlib.h>
+#include <ma/libc/assert.h>
+#include <ma/libc/stdlib.h>
 
 size_t ma_get_prealloc_size(enum ma_size_class class)
 {

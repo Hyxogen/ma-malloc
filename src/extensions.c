@@ -1,7 +1,7 @@
 #include "ma/internal.h"
 
 #include <errno.h>
-#include <libc/assert.h>
+#include <ma/libc/assert.h>
 
 size_t ma_malloc_usable_size(void *p)
 {

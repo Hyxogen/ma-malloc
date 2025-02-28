@@ -1,9 +1,9 @@
 #include "ma/internal.h"
 
-#include <libc/assert.h>
-#include <libc/stdio.h>
-#include <libc/stdlib.h>
-#include <libc/string.h>
+#include <ma/libc/assert.h>
+#include <ma/libc/stdio.h>
+#include <ma/libc/stdlib.h>
+#include <ma/libc/string.h>
 
 static size_t ma_set_bit(size_t string, size_t mask, bool v)
 {

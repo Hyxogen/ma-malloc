@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <libc/stdio.h>
+#include <ma/libc/stdio.h>
 #include <unistd.h>
 
 #ifndef MA_USE_PTHREAD

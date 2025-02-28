@@ -5,8 +5,8 @@
 /* Libft doesn't have a ft_assert implementation for the same reasons it doesn't
  * have a ft_abort */
 
-#include <libc/stdio.h>
-#include <libc/stdlib.h>
+#include <ma/libc/stdio.h>
+#include <ma/libc/stdlib.h>
 
 static inline void ma_assert_impl(int c, const char *pred, const char *file,
 				  const char *func, int line)

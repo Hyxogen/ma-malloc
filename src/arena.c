@@ -1,8 +1,8 @@
 #include "ma/internal.h"
 
-#include <libc/assert.h>
-#include <libc/stdlib.h>
-#include <libc/string.h>
+#include <ma/libc/assert.h>
+#include <ma/libc/stdlib.h>
+#include <ma/libc/string.h>
 
 void ma_init_arena(struct ma_arena *arena)
 {

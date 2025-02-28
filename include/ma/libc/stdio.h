@@ -1,7 +1,7 @@
 #ifndef MA_LIBC_STDIO_H
 #define MA_LIBC_STDIO_H
 
-#include <libc/internal.h>
+#include <ma/libc/internal.h>
 
 #if MA_USE_LIBFT
 #include <ft/stdio.h>

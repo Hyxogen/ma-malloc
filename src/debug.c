@@ -1,10 +1,10 @@
 #include "ma/internal.h"
 
 #include <errno.h>
-#include <libc/internal.h>
-#include <libc/ctype.h>
-#include <libc/stdio.h>
-#include <libc/string.h>
+#include <ma/libc/internal.h>
+#include <ma/libc/ctype.h>
+#include <ma/libc/stdio.h>
+#include <ma/libc/string.h>
 #include <signal.h>
 
 #if MA_TRACES
@@ -12,7 +12,7 @@
 #endif
 
 #if MA_TRACK_CHUNKS
-#include <libc/string.h>
+#include <ma/libc/string.h>
 #endif
 
 #if FT_BONUS

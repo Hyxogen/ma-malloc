@@ -1,7 +1,7 @@
 #ifndef MA_LIBC_STRING_H
 #define MA_LIBC_STRING_H
 
-#include <libc/internal.h>
+#include <ma/libc/internal.h>
 #include <stddef.h>
 
 #ifndef MA_USE_LIBFT
