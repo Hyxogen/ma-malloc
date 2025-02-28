@@ -69,3 +69,4 @@ compare_output grep -r "int" | sort
 compare_output /usr/bin/ls
 compare_output cat "$LIB_DIR/Makefile"
 compare_output nm "$LIB_DIR/$LIB_NAME"
+echo "OK"
