@@ -4,6 +4,7 @@
 #include <ma/libc/stdio.h>
 #include <ma/libc/stdlib.h>
 #include <ma/libc/string.h>
+#include <ma/sysdeps.h>
 
 static size_t ma_set_bit(size_t string, size_t mask, bool v)
 {

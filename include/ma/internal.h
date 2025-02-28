@@ -79,8 +79,6 @@
 
 #define MA_CHUNK_ALLOC_PADDING (2 * MA_HEADER_SIZE + MA_HALF_MALLOC_ALIGN)
 
-#define MA_SYSALLOC_FAILED ((void *)-1)
-
 _Static_assert(2 * MA_HEADER_SIZE == MA_MALLOC_ALIGN,
 	       "basic assumption for alignment implementation");
 _Static_assert(MA_HEADER_SIZE == MA_HALF_MALLOC_ALIGN,
@@ -281,10 +279,6 @@ void ft_assert_impl(int pred, const char *predstr, const char *func,
 		    const char *file, int line);
 char *ft_strerror(int err);
 void ma_perror(const char *s);
-
-int ma_sysalloc_granularity(void);
-void *ma_sysalloc(size_t size);
-bool ma_sysfree(void *p, size_t size);
 
 void ma_init_debug(struct ma_debug *debug);
 #if MA_TRACK_CHUNKS

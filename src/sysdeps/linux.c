@@ -1,4 +1,4 @@
-#include "ma/internal.h"
+#include <ma/sysdeps.h>
 
 #include <sys/mman.h>
 #include <unistd.h>

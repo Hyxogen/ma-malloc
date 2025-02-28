@@ -10,7 +10,6 @@
 /tmp
 /test
 *.plist
-*.txt
 /hello.c
 /main.c
 /stress

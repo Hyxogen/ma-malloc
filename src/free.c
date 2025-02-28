@@ -2,6 +2,7 @@
 
 #include <errno.h>
 #include <ma/libc/stdlib.h>
+#include <ma/sysdeps.h>
 
 static struct ma_hdr *ma_maybe_merge(struct ma_arena *arena,
 				     struct ma_hdr *chunk)

@@ -26,7 +26,11 @@ static inline int ma_dprintf(int fd, const char *restrict format, ...)
 	va_list args;
 
 	va_start(args, format);
-	int rc = MA_LIBC_PREFIX(vdprintf)(fd, format, args);
+	int rc = -1;
+
+	if (fd == 2) {
+		rc = MA_LIBC_PREFIX(vfprintf)(stderr, format, args);
+	}
 	va_end(args);
 	return rc;
 }

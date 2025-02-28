@@ -20,7 +20,6 @@ inline int ma_ispunct(int c) { return MA_LIBC_PREFIX(ispunct)(c); }
 inline int ma_isspace(int c) { return MA_LIBC_PREFIX(isspace)(c); }
 inline int ma_isupper(int c) { return MA_LIBC_PREFIX(isupper)(c); }
 inline int ma_isxdigit(int c) { return MA_LIBC_PREFIX(isxdigit)(c); }
-inline int ma_isascii(int c) { return MA_LIBC_PREFIX(isascii)(c); }
 inline int ma_isblank(int c) { return MA_LIBC_PREFIX(isblank)(c); }
 inline int ma_toupper(int c) { return MA_LIBC_PREFIX(toupper)(c); }
 inline int ma_tolower(int c) { return MA_LIBC_PREFIX(tolower)(c); }

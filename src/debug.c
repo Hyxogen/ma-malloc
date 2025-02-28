@@ -5,6 +5,7 @@
 #include <ma/libc/ctype.h>
 #include <ma/libc/stdio.h>
 #include <ma/libc/string.h>
+#include <ma/sysdeps.h>
 
 #if MA_USE_THREADS == MA_PTHREAD_THREADS
 #include <signal.h>

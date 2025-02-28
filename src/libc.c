@@ -1,6 +1,6 @@
-#if MA_COMPILE_AS_LIBC
-
 #include "ma/internal.h"
+
+#if MA_COMPILE_AS_LIBC
 
 void *malloc(size_t n) { return ma_malloc(n); }
 void *calloc(size_t nmemb, size_t size) { return ma_calloc(nmemb, size); }
