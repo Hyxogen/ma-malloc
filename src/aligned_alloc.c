@@ -21,12 +21,12 @@ static void *ma_aligned_alloc_no_lock(struct ma_arena *arena, size_t align,
 	void *alignedp = (void *)MA_ALIGN_UP((uintptr_t)p, align);
 
 	if (p != alignedp) {
-		size_t diff = alignedp - p;
+		size_t diff = (char *)alignedp - (char *)p;
 
 		if (diff < MA_MIN_CHUNK_SIZE) {
 			alignedp =
 			    (void *)MA_ALIGN_UP((uintptr_t)alignedp + 1, align);
-			diff = alignedp - p;
+			diff = (char *)alignedp - (char *)p;
 		}
 
 		ma_assert(diff >= MA_MIN_CHUNK_SIZE);
