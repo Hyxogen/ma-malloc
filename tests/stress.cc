@@ -1,6 +1,6 @@
 extern "C" {
 #define MA_COMPILE_AS_LIBC 0
-#include "ma/malloc.h"
+#include "ma/ma.h"
 #undef MA_COMPILE_AS_LIBC
 #include <unistd.h>
 #include <sys/wait.h>
