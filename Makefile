@@ -8,19 +8,23 @@ LFLAGS		:=
 NAME		:= libmamalloc
 SUBJECT_NAME	:= libft_malloc_$(HOSTTYPE)
 
-CC		?= cc
-CXX		?= c++
-
 SRC_DIR		:= src
 OBJ_DIR		:= build
 DEP_DIR		:= build
 
 SRC_FILES	:= $(shell find $(SRC_DIR) -name '*.c')
+HDR_FILES	:= $(shell find include/ -name '*.h')
 OBJ_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC_FILES))
 DEP_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(DEP_DIR)/%.d,$(SRC_FILES))
 
 LIBFT_DIR	:= libft
 LIBFT_LIB	:= $(LIBFT_DIR)/libft.a
+
+PREFIX		?= /usr
+
+ifndef threads:
+	threads	:= c11
+endif
 
 ifndef config
 	config	:= distr
@@ -54,7 +58,7 @@ endif
 $(NAME).so: $(OBJ_FILES)
 	$(CC) $(OBJ_FILES) $(LFLAGS) -shared -o $@
 
-$(NAME).a: $(OBJ_FILES) $(LIBFT_LIB)
+$(NAME).a: $(OBJ_FILES)
 	ar rcs $@ $(OBJ_FILES)
 
 # It's better not to use this rule. It's just so it fits the requirements of the
@@ -75,6 +79,15 @@ mandatory: $(LIBFT_LIB) $(OBJ_FILES)
 # Don't use it.
 bonus: CFLAGS += -DFT_BONUS=1
 bonus: mandatory
+
+$(PREFIX)/%.h: %.h
+	install -Dm644 $< $@
+
+install-headers: $(addprefix $(PREFIX)/,$(HDR_FILES))
+
+install: $(NAME).a
+	${MAKE} install-headers
+	install -Dm644 $< $(PREFIX)/lib/libmamalloc.a
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c Makefile
 	@mkdir -p $(@D)
