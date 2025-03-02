@@ -2,6 +2,9 @@
 
 A relatively portable ptmalloc/dlmalloc inspired memory allocator
 
+## Building
+Run `make help` to for a list of possible build scripts
+
 ## Resources/References used
  - Memory Allocation Policies Reconsidered: Methodological Problems and Emprical
  Realities
