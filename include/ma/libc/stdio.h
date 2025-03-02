@@ -5,6 +5,7 @@
 
 #if MA_USE_LIBFT
 #include <ft/stdio.h>
+#include <unistd.h>
 #else
 #include <stdio.h>
 #endif
@@ -29,7 +30,11 @@ static inline int ma_dprintf(int fd, const char *restrict format, ...)
 	int rc = -1;
 
 	if (fd == 2) {
+#if MA_USE_LIBFT
+		rc = MA_LIBC_PREFIX(vdprintf)(STDERR_FILENO, format, args);
+#else
 		rc = MA_LIBC_PREFIX(vfprintf)(stderr, format, args);
+#endif
 	}
 	va_end(args);
 	return rc;

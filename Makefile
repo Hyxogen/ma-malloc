@@ -3,25 +3,13 @@ ifeq ($(HOSTTYPE),)
 endif
 
 CFLAGS		:= -Wall -Wextra -MMD -Iinclude -fPIC -DMA_TRACES=0
-LFLAGS		:= -shared
+LFLAGS		:=
 
-NAME		:= libft_malloc_$(HOSTTYPE).so
+NAME		:= libmamalloc
+SUBJECT_NAME	:= libft_malloc_$(HOSTTYPE)
 
 CC		?= cc
 CXX		?= c++
-
-ifndef use_libc
-	use_libc=no
-endif
-
-ifeq ($(use_libc), yes)
-LIBFT_DIR	:= 
-LIBFT_LIB	:=
-else
-LIBFT_DIR	:= libft
-LIBFT_LIB	:= $(LIBFT_DIR)/libft.a
-CFLAGS		+= -I$(LIBFT_DIR)/include
-endif
 
 SRC_DIR		:= src
 OBJ_DIR		:= build
@@ -30,6 +18,9 @@ DEP_DIR		:= build
 SRC_FILES	:= $(shell find $(SRC_DIR) -name '*.c')
 OBJ_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC_FILES))
 DEP_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(DEP_DIR)/%.d,$(SRC_FILES))
+
+LIBFT_DIR	:= libft
+LIBFT_LIB	:= $(LIBFT_DIR)/libft.a
 
 ifndef config
 	config	:= distr
@@ -60,25 +51,30 @@ else
 $(error "Unknown check '$(check)'. Available: all, simple, none")
 endif
 
-normal: CFLAGS += -DMA_SEGREGATED_BESTFIT=0 -DMA_COMPILE_AS_LIBC=1
-normal: $(NAME)
+$(NAME).so: $(OBJ_FILES)
+	$(CC) $(OBJ_FILES) $(LFLAGS) -shared -o $@
+
+$(NAME).a: $(OBJ_FILES) $(LIBFT_LIB)
+	ar rcs $@ $(OBJ_FILES)
 
 # It's better not to use this rule. It's just so it fits the requirements of the
 # subject.
-mandatory: CFLAGS += -DMA_SEGREGATED_BESTFIT=1 -DMA_TRACK_CHUNKS=1 -DMA_COMPILE_AS_LIBC=1 -DMA_USE_LIBFT=1 -DMA_USE_THREADS=MA_PTHREAD_THREADS
-mandatory: LFLAGS += -lpthread
-mandatory: $(NAME)
+mandatory: CFLAGS	+= \
+	-DMA_SEGREGATED_BESTFIT=1 -DMA_TRACK_CHUNKS=1 -DMA_COMPILE_AS_LIBC=1 \
+	-DMA_USE_LIBFT=1 -DMA_USE_THREADS=MA_PTHREAD_THREADS
+mandatory: LFLAGS	+= -lpthread
+mandatory: NAME		= $(SUBJECT_NAME)
+mandatory: CFLAGS	+= -I$(LIBFT_DIR)/include
+mandatory: LFLAGS	+= -L$(LIBFT_DIR) -lft -shared
+mandatory: $(LIBFT_LIB) $(OBJ_FILES)
+	$(CC) $(OBJ_FILES) $(LFLAGS) -shared -o $(SUBJECT_NAME).so
 
-# You found the bonus rule! Don't use it. It's useless
+# You found the bonus rule! Don't use it. It's useless.
 # It only really adds a few debug features (like dumping allocations) and just
-# adds more overhead
-# Don't use it
+# adds more overhead.
+# Don't use it.
 bonus: CFLAGS += -DFT_BONUS=1
 bonus: mandatory
-
-$(NAME): $(OBJ_FILES) $(LIBFT_LIB)
-	@echo $(SRC_FILES)
-	$(CC) $(OBJ_FILES) $(LIBFT_LIB) $(LFLAGS) -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c Makefile
 	@mkdir -p $(@D)
@@ -104,7 +100,11 @@ clean:
 fclean:
 	@${MAKE} clean
 	@${MAKE} -C $(LIBFT_DIR) fclean
-	rm -f $(NAME)
+	rm -f $(NAME).so
+	rm -f $(NAME).a
+	rm -f $(NAME).a
+	rm -f $(SUBJECT_NAME).so
+	rm -f stress
 
 re:
 	@${MAKE} fclean
