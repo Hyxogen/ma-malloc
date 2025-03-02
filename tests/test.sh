@@ -1,7 +1,7 @@
 #!/bin/bash
 
 HOSTTYPE="$(uname -m)_$(uname -s)"
-LIB_NAME="libft_malloc_$HOSTTYPE.so"
+LIB_NAME="libmamalloc.so"
 LIB_DIR=$PWD
 
 file "$LIB_DIR/$LIB_NAME"
