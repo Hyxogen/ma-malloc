@@ -260,13 +260,13 @@ void ma_dump_arena(const struct ma_arena *arena);
 void ma_dump(void);
 
 #if defined(FT_NDEBUG) || !MA_CHECK_SELF
-inline void ma_assert_correct_all_chunks(const struct ma_hdr *list,
+static inline void ma_assert_correct_all_chunks(const struct ma_hdr *list,
 					 void *unused)
 {
 	(void)list;
 	(void)unused;
 }
-inline void ma_assert_correct_arena(const struct ma_arena *arena)
+static inline void ma_assert_correct_arena(const struct ma_arena *arena)
 {
 	(void)arena;
 }
@@ -287,21 +287,21 @@ void ma_debug_rem_chunk(struct ma_debug *debug, const struct ma_hdr *chunk);
 void ma_debug_for_each(const struct ma_debug *list,
 		       void (*f)(const struct ma_hdr *, void *), void *ctx);
 #else
-inline void ma_debug_add_chunk(struct ma_debug *list,
+static inline void ma_debug_add_chunk(struct ma_debug *list,
 			       const struct ma_hdr *chunk)
 {
 	(void)list;
 	(void)chunk;
 }
 
-inline void ma_debug_rem_chunk(struct ma_debug *list,
+static inline void ma_debug_rem_chunk(struct ma_debug *list,
 			       const struct ma_hdr *chunk)
 {
 	(void)list;
 	(void)chunk;
 }
 
-inline void ma_debug_for_each(const struct ma_debug *list,
+static inline void ma_debug_for_each(const struct ma_debug *list,
 			      void (*f)(const struct ma_hdr *, void *),
 			      void *ctx)
 {
