@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 #include <ma/libc/stdio.h>
-#include <ma/threads.h>
+#include <ma/mutex.h>
 /*
  * The subject for which this malloc was made requires that the implemention has
  * different "zones" for a size of allocation. Thus small allocation may not be

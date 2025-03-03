@@ -7,7 +7,7 @@
 #include <ma/libc/string.h>
 #include <ma/sysdeps.h>
 
-#if MA_USE_THREADS == MA_PTHREAD_THREADS
+#if MA_USE_MUTEX == MA_PTHREAD_MUTEX
 #include <signal.h>
 #endif
 
@@ -33,9 +33,9 @@ struct show_alloc_mem_ctx {
 {
 #if FT_BONUS
 	abort();
-#elif MA_USE_PTHREAD == MA_C11_THREADS
+#elif MA_USE_MUTEX == MA_C11_MUTEX
 	thrd_exit(1);
-#elif MA_USE_THREADS == MA_PTHREAD_THREADS
+#elif MA_USE_MUTEX == MA_PTHREAD_MUTEX
 	pthread_kill(pthread_self(), SIGABRT);
 	pthread_kill(pthread_self(), SIGKILL);
 
