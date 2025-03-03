@@ -3,7 +3,7 @@
 #include <ma/libc/assert.h>
 
 #if MA_SEGREGATED_BESTFIT
-#include <errno.h>
+#include <ma/libc/errno.h>
 #endif
 
 static void *ma_aligned_alloc_no_lock(struct ma_arena *arena, size_t align,
@@ -53,7 +53,7 @@ void *ma_aligned_alloc(size_t align, size_t size)
 #if MA_SEGREGATED_BESTFIT
 	// it would probably be possible, but I can't be bothered to implement
 	// this, it is supported if !MA_SEGREGATED_BESTFIT
-	errno = ENOTSUP;
+	MA_SET_ERRNO(ENOTSUP);
 	return NULL;
 #endif
 	if (align <= MA_MALLOC_ALIGN)

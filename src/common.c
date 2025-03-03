@@ -1,6 +1,6 @@
 #include "ma/internal.h"
 
-#include <errno.h>
+#include <ma/libc/errno.h>
 #include <ma/libc/assert.h>
 #include <ma/libc/stdlib.h>
 
@@ -37,7 +37,7 @@ void ma_check_pointer(void *p)
 bool ma_check_requestsize(size_t size)
 {
 	if (size > PTRDIFF_MAX) {
-		errno = ENOMEM;
+		MA_SET_ERRNO(ENOMEM);
 		return false;
 	}
 

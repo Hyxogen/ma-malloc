@@ -1,6 +1,6 @@
 #include "ma/internal.h"
 
-#include <errno.h>
+#include <ma/libc/errno.h>
 #include <ma/libc/internal.h>
 #include <ma/libc/ctype.h>
 #include <ma/libc/stdio.h>

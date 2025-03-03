@@ -1,6 +1,6 @@
 #include "ma/internal.h"
 
-#include <errno.h>
+#include <ma/libc/errno.h>
 #include <ma/libc/stdlib.h>
 
 static struct ma_opts *ma_get_opts_mut(void)

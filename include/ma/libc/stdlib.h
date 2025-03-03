@@ -5,7 +5,7 @@
 
 #if MA_USE_LIBFT
 #include <ft/stdlib.h>
-#else
+#elif !MA_PLATFORM_BARE
 #include <stdlib.h>
 #endif
 
@@ -14,13 +14,19 @@
  * functions */
 [[noreturn]]
 void ma_abort(void);
+#elif MA_PLATFORM_BARE
+[[noreturn]]
+void ma_abort(void);
+char *ma_getenv(const char *name);
+unsigned long long ma_strtoull(const char *restrict nptr, char **restrict endptr, int base);
+
 #else
 [[noreturn]]
 inline void ma_abort(void)
 {
 	MA_LIBC_PREFIX(abort)();
 }
-#endif
+
 
 inline char *ma_getenv(const char *name) { return MA_LIBC_PREFIX(getenv)(name); }
 
@@ -29,5 +35,6 @@ inline unsigned long long ma_strtoull(const char *restrict nptr,
 {
 	return MA_LIBC_PREFIX(strtoull)(nptr, endptr, base);
 }
+#endif
 
 #endif

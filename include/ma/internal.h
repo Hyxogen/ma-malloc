@@ -51,8 +51,8 @@
 #define MA_FLAGS_MASK (MA_PINUSE_FLAG | MA_LARGE_FLAG | MA_SMALL_FLAG)
 #define MA_SIZE_MASK (~MA_FLAGS_MASK)
 
-#define MA_HEADER_SIZE (sizeof(uint64_t))
-#define MA_FOOTER_SIZE (sizeof(uint64_t))
+#define MA_HEADER_SIZE 8 /* (sizeof(uint64_t)) */
+#define MA_FOOTER_SIZE 8 /* (sizeof(uint64_t)) */
 
 #define MA_MALLOC_ALIGN (_Alignof(max_align_t))
 #define MA_HALF_MALLOC_ALIGN (MA_MALLOC_ALIGN / 2)

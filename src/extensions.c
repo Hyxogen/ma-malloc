@@ -1,6 +1,6 @@
 #include "ma/internal.h"
 
-#include <errno.h>
+#include <ma/libc/errno.h>
 #include <ma/libc/assert.h>
 
 size_t ma_malloc_usable_size(void *p)
@@ -18,7 +18,7 @@ void *ma_memalign(size_t align, size_t size)
 	(void)size;
 
 	// TODO should be pretty easy to implement
-	errno = ENOTSUP;
+	MA_SET_ERRNO(ENOTSUP);;
 	ma_assert(0);
 	return NULL;
 }
@@ -41,7 +41,7 @@ int ma_posix_memalign(void **memptr, size_t align, size_t size)
 	else
 		*memptr = p;
 
-	errno = prev_errno;
+	MA_SET_ERRNO(prev_errno);
 	return res;
 }
 
@@ -50,7 +50,7 @@ void *ma_valloc(size_t size)
 	(void)size;
 
 	// TODO should be pretty easy to implement
-	errno = ENOTSUP;
+	MA_SET_ERRNO(ENOTSUP);;
 	ma_assert(0);
 	return NULL;
 }
@@ -59,7 +59,7 @@ void *ma_pvalloc(size_t size)
 {
 	(void)size;
 
-	errno = ENOTSUP;
+	MA_SET_ERRNO(ENOTSUP);;
 	ma_assert(0);
 	return NULL;
 }

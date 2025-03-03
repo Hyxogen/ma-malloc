@@ -13,11 +13,17 @@
 
 /* Libft doesn't have a strerror (yet) */
 char *ma_strerror(int errnum);
-#else
+#elif !MA_PLATFORM_BARE
 #include <string.h>
 
 inline char *ma_strerror(int errnum) { return MA_LIBC_PREFIX(strerror)(errnum); }
 #endif
+
+#if MA_PLATFORM_BARE
+char *ma_strerror(int errnum);
+void *ma_memcpy(void *dest, const void *src, size_t n);
+void *ma_memset(void *dest, int c, size_t n);
+#else
 
 inline void *ma_memcpy(void *dest, const void *src, size_t n)
 {
@@ -28,5 +34,6 @@ inline void *ma_memset(void *dest, int c, size_t n)
 {
 	return MA_LIBC_PREFIX(memset)(dest, c, n);
 }
+#endif
 
 #endif

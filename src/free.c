@@ -1,6 +1,6 @@
 #include "ma/internal.h"
 
-#include <errno.h>
+#include <ma/libc/errno.h>
 #include <ma/libc/stdlib.h>
 #include <ma/sysdeps.h>
 
@@ -94,6 +94,6 @@ void ma_free(void *p)
 	ma_unlock_arena(arena);
 
 #if MA_GLIBC_COMPATIBLE
-	errno = prev_errno;
+	MA_SET_ERRNO(prev_errno);
 #endif
 }

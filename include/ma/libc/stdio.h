@@ -6,9 +6,14 @@
 #if MA_USE_LIBFT
 #include <ft/stdio.h>
 #include <unistd.h>
-#else
+#elif !MA_PLATFORM_BARE
 #include <stdio.h>
 #endif
+
+#if MA_PLATFORM_BARE
+int ma_printf(const char *restrict format, ...);
+int ma_dprintf(int fd, const char *restrict format, ...);
+#else
 
 #include <stdarg.h>
 
@@ -39,5 +44,6 @@ static inline int ma_dprintf(int fd, const char *restrict format, ...)
 	va_end(args);
 	return rc;
 }
+#endif
 
 #endif

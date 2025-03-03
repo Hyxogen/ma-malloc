@@ -12,10 +12,10 @@ SRC_DIR		:= src
 OBJ_DIR		:= build
 DEP_DIR		:= build
 
-SRC_FILES	:= $(shell find $(SRC_DIR) -name '*.c')
+SRC_FILES	:= \
+		   src/aligned_alloc.c src/arena.c src/calloc.c src/chunk.c src/common.c src/debug.c src/extensions.c \
+		   src/free.c src/libc.c src/malloc.c src/opts.c src/realloc.c src/state.c src/thread.c
 HDR_FILES	:= $(shell find include/ -name '*.h')
-OBJ_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC_FILES))
-DEP_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(DEP_DIR)/%.d,$(SRC_FILES))
 
 LIBFT_DIR	:= libft
 LIBFT_LIB	:= $(LIBFT_DIR)/libft.a
@@ -28,6 +28,18 @@ endif
 
 ifndef config
 	config	:= distr
+endif
+
+ifndef platform:
+	platform := posix
+endif
+
+ifeq ($(platform),posix)
+	SRC_FILES += src/sysdeps/linux.c
+else ifeq ($(platform),baremetal)
+	CFLAGS += -DMA_PLATFORM_BARE=1
+else
+$(error "Unknown platform '$(platfrom)'. Available: posix, baremetal")
 endif
 
 ifeq ($(config),debug)
@@ -50,10 +62,13 @@ ifeq ($(check),all)
 else ifeq ($(check),simple)
 	CFLAGS	+= -DMA_CHECK_SELF=0
 else ifeq ($(check),none)
-	CFLAGS	+= -DMA_CHECK_SELF=0 -DFT_NDEBUG
+	CFLAGS	+= -DMA_CHECK_SELF=0
 else
 $(error "Unknown check '$(check)'. Available: all, simple, none")
 endif
+
+OBJ_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRC_FILES))
+DEP_FILES	:= $(patsubst $(SRC_DIR)/%.c,$(DEP_DIR)/%.d,$(SRC_FILES))
 
 $(NAME).so: $(OBJ_FILES)
 	$(CC) $(OBJ_FILES) $(LFLAGS) -shared -o $@
@@ -112,7 +127,6 @@ clean:
 
 fclean:
 	@${MAKE} clean
-	@${MAKE} -C $(LIBFT_DIR) fclean
 	rm -f $(NAME).so
 	rm -f $(NAME).a
 	rm -f $(NAME).a

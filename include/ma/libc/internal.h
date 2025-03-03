@@ -5,6 +5,10 @@
 #define MA_USE_LIBFT 0
 #endif
 
+#ifndef MA_PLATFORM_BARE
+#define MA_PLATFORM_BARE 0
+#endif
+
 #if MA_USE_LIBFT
 #include <ft/string.h>
 #define MA_LIBC_PREFIX(x) ft_##x

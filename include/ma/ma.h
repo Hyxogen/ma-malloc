@@ -1,5 +1,5 @@
-#ifndef FT_MALLOC_H
-#define FT_MALLOC_H
+#ifndef MA_MA_H
+#define MA_MA_H
 
 #include <stddef.h>
 

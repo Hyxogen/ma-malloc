@@ -19,9 +19,18 @@ static inline void ma_assert_impl(int c, const char *pred, const char *file,
 	}
 }
 
+#ifdef NDEBUG
+#define ma_assert(c)
+#else
 #define ma_assert(c)                                                           \
 	ma_assert_impl((c) != 0, #c, __FILE__, __FUNCTION__, __LINE__)
+#endif
 
+#elif MA_PLATFORM_BARE
+
+_Noreturn void ma_assert_fail(const char *, const char *, int, const char *);
+
+#define ma_assert(x)  ((void)((x) || (ma_assert_fail(#x, __FILE__, __LINE__, __func__),0)))
 #else
 #include <assert.h>
 #define ma_assert(x) assert(x)
