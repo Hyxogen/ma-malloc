@@ -83,7 +83,7 @@ size_t ma_large_binidx(size_t n)
 		n -= count * size;
 		offset += count;
 		count /= 2;
-		size *= 8;
+		size *= MA_LARGE_MULTIPLIER;
 	}
 	return MA_BIN_COUNT - 1;
 }

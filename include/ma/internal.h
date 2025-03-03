@@ -72,7 +72,24 @@
 	 MA_HEADER_SIZE)
 
 #define MA_MIN_LARGE_SIZE (MA_MAX_SMALL_SIZE + MA_HEADER_SIZE)
+
+#ifndef MA_MAX_LARGE_SIZE
+/* TODO the second 1024 should probably be some combination of MA_MIN_LARGE_SIZE
+ * and MA_LARGE_MULTIPLIER */
 #define MA_MAX_LARGE_SIZE (1024 * 1024 - MA_HEADER_SIZE)
+#endif
+
+#if (MA_MAX_LARGE_SIZE) <= (MAX_SMALL_SIZE)
+#error "MA_MAX_LARGE_SIZE must be greater than MAX_SMALL_SIZE"
+#endif
+
+#ifndef MA_LARGE_MULTIPLIER
+#define MA_LARGE_MULTIPLIER 8
+#endif
+
+#if MA_LARGE_MULTIPLIER < 2
+#error "MA_LARGE_MULTIPLIER must be >= 2"
+#endif
 
 #define MA_CHUNKS_PER_ZONE 128
 
