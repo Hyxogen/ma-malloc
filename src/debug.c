@@ -151,7 +151,7 @@ static void ma_show_alloc_mem_list(const struct ma_hdr *hdr, void *opaque)
 			    (unsigned long)((unsigned char *)p + size), size);
 
 			if (ctx->hexdump)
-				ma_hexdump_to(STDOUT_FILENO, p, size, width);
+				ma_hexdump_to(1, p, size, width);
 
 			ctx->total += size;
 		}

@@ -8,7 +8,6 @@
 
 #include <ma/libc/stdio.h>
 #include <ma/threads.h>
-#include <unistd.h>
 /*
  * The subject for which this malloc was made requires that the implemention has
  * different "zones" for a size of allocation. Thus small allocation may not be
@@ -107,7 +106,7 @@ _Static_assert(MA_HEADER_SIZE == MA_HALF_MALLOC_ALIGN,
 #endif
 
 // TODO rename to ma_eprint
-#define eprint(...) ma_dprintf(STDERR_FILENO, __VA_ARGS__)
+#define eprint(...) ma_dprintf(2, __VA_ARGS__)
 
 #define MA_ALIGN_UP(x, boundary) (((x) + (boundary)-1) & ~((boundary)-1))
 #define MA_ALIGN_DOWN(x, boundary) (((uintptr_t)(x)) & ~((boundary)-1))
